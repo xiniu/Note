@@ -397,7 +397,39 @@ public:
 
 针对二分法，要转变原先的思维，将二分法转向夹逼的思想。每次去除一半的可能空间。要深刻理解这句话，明确解空间是什么，取中位数和排除的逻辑，注意不要进入死循环。建议详细参考公众号以下文档：https://mp.weixin.qq.com/s/gjXOjOt32d8oAbb40tN5_Q
 
-### No. 4寻找两个有序数组的中位数
+### No.69 x 的平方根
+
+计算并返回 x 的平方根，其中 x 是非负整数。
+由于返回类型是整数，结果只保留整数的部分，小数部分将被舍去。
+
+#### 一些基本思路
+
+- 解空间：0-x
+- 排除的逻辑：如果m\*m > x， 则x的平方根肯定比m小
+
+#### 示例代码
+
+```C++
+class Solution {
+public:
+    int mySqrt(int x) {
+        int begin = 0;
+        int end = x;
+        while (begin < end) {
+            int mid = (begin + end) / 2 + 1;
+            if (mid > x / mid) {  // 这样能防止溢出
+                end = mid - 1;
+            } else {
+                begin = mid;
+            }
+        }
+        return begin;
+        
+    }
+};
+```
+
+### No.4 寻找两个有序数组的中位数
 
 寻找两个有序数组的中位数。
 
