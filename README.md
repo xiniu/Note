@@ -309,8 +309,17 @@ sudo apt-get install docker.io  # 14.04自带安装包，直接安装
 docker version #安装成功 查看版本
 #   https://wiki.openvz.org/Download/template/precreated
 sudo cat ubuntu-14.04-x86-minimal.tar.gz | docker import - ubuntu:14.04
-
 ```
+
+## win10 wsl安装ubuntu
+为了学习https://www.datascienceatthecommandline.com/
+以及后续继续学些C语言，试着使用下WSL。安装了ubuntu
+参照链接https://jingyan.baidu.com/article/49711c61a1a025fa441b7cf2.html
+和http://www.manongjc.com/article/36621.html 但是pip还是安装的有问题，后面学习python再注意把
+
+### 遇到的问题
+配置了清华的源后直接sudo apt-get install gcc时报错无法找到package。原因时修改完源后没有更新源。这个时候需要执行
+`sudo apt-get update`
 
 
 
