@@ -246,8 +246,246 @@ string longestPalindrome(string s) {
 	}
 ```
 
-    
+### No.7 整数反转
+
+给出一个 32 位的有符号整数，你需要将这个整数中每位上的数字进行反转。 假设我们的环境只能存储得下 32 位的有符号整数，则其数值范围为 [−2^31,  2^31 − 1]。请根据这个假设，如果反转后整数溢出那么就返回0
+
+####一些基本思路
+
+这里的重点是考虑溢出。在可能导致溢出的地方加判断。另外注意INT_MAX和INT_MIN这几个宏的使用，这几个宏来自于c中的limits.h
+
+####示例代码
+
+```C++
+class Solution {
+public:
+    int reverse(int x) {
+        int result = 0;
+        bool isPostive = (x > 0);
+        while (x) {
+
+            if ((isPostive && result > (INT_MAX - x % 10) / 10) ||
+                (!isPostive && result < (INT_MIN - x % 10) /10))
+            {
+                return 0;
+            } 
+            result = result * 10 + x % 10;
+            x /= 10;
+        }
+        return result;
+    }
+};
+```
+### No.9 回文数
+
+判断一个整数是否是回文数。回文数是指正序（从左向右）和倒序（从右向左）读都是一样的整数。
+
+#### 一些基本思路
+
+- 直接将数字取反形成一个新的数字再比较相等会导致溢出，理论上溢出也能保证答案正确，但是leetCode会报错，应该是有什么编译参数在校验
+- 无脑的做法是把各位写在一个vector中再判断
+- 事实上，可以按照思路1，但是不需要把数字完全取反，只取到一半就可以了
+
+#### 示例代码
+
+```C++
+class Solution
+{
+public:
+    bool isPalindrome(int x)
+    {
+
+        if (x < 0 || (x % 10 == 0 && x)) // 結尾是0的只有0本身是回文數字
+        {
+            return false;
+        }
+
+        int reverse = 0;
+        while (x > reverse) //  直到判断超过了一般
+        {
+            reverse = reverse * 10 + x % 10;
+            x /= 10;
+        }
+        return x == reverse || x == reverse / 10; // 要么相等 要么错一位
+    }
+};
+```
+
+### No. 最长公共前缀
+
+编写一个函数来查找字符串数组中的最长公共前缀。
+
+####一些基本思路
+
+- 分治法：其实只能当成分治法的一种练习，效率并不高
+- 我自己更认同的算法，所有的串逐位比较，这样每个串的每个字符都被比较了一次，没有重复比较。
+
+####示例代码
+
+```C++
+// 分治算法
+class Solution2 {
+public:
+    string findLongestCommonPrefix(vector<string>& strs, int begin, int end){
+        if (begin == end)
+        {
+            return strs[begin];
+        }
+        int mid = (begin + end) / 2;
+        string str1 =  findLongestCommonPrefix(strs, begin, mid);
+        string str2 =  findLongestCommonPrefix(strs, mid + 1, end);
+        string s;
+        for (int i = 0; i < str1.length() && i < str2.length() && str1[i] == str2[i]; i++)
+        {
+            s.push_back(str1[i]);
+        }
+        return s;
+    }
+    string longestCommonPrefix(vector<string>& strs) {
+        if (strs.empty())
+        {
+            return "";
+        }
+        
+        return findLongestCommonPrefix(strs, 0, strs.size()-1);
+    }
+};
+
+// 更高效的算法
+class Solution {
+public:
+    string longestCommonPrefix(vector<string>& strs) {
+        if (strs.empty())
+        {
+            return "";
+        }
+        int result = -1;
+        while (true)
+        {
+            bool isBreak = false;
+            int at = result + 1;
+            if (at >= strs[0].length())
+            {
+                break;
+            }
+            char atch = strs[0][at];
+            
+            for (int j = 1; j < strs.size(); j++) {
+                if (at >= strs[j].length() || strs[j][at] != atch)
+                {
+                    isBreak = true;
+                    break;
+                }
+                
+            }
+            if(isBreak) {
+                break;
+            }
+            result++;
+        }
+        if (result + 1 > 0)
+        {
+            return strs[0].substr(0, result + 1);
+        } else {
+            return "";
+        }     
+    }
+};
+```
 
 ## 二分法
 
+针对二分法，要转变原先的思维，将二分法转向夹逼的思想。每次去除一半的可能空间。要深刻理解这句话，明确解空间是什么，取中位数和排除的逻辑，注意不要进入死循环。建议详细参考公众号以下文档：https://mp.weixin.qq.com/s/gjXOjOt32d8oAbb40tN5_Q
+
 ### No. 4寻找两个有序数组的中位数
+
+寻找两个有序数组的中位数。
+
+#### 一些基本思路
+
+- 将两个有序链表合并然后再取中位数的方法一般都会想到，但是复杂度不满足要求，
+- 根据题目要求的复杂度，明显是想要二分法。这道题在看了题解时恍然大悟。其实可以用二分的思路解决，主要时以下思路：
+  - 中位数的特点是将数组分成两部分，个数相等（偶数个元素）或者只差1
+  - 尝试将两个数组分割，对于第一个数组的每一次分割（长度较小的数组，可以少分一点），第二个数组有一个唯一对应的分割（要满足第一个条件）
+  - 所以只需要遍历数组有分割点，满足二分。关键要想清楚，每次如何排处一半的空间以及排除的条件。
+
+#### 示例代码
+
+```C++
+class Solution
+{
+    double findMedianSortedArrays(vector<int> &nums1, vector<int> &nums2)
+    {
+        // devide two arrays A[0,...A.len -1] => A[0,...i-1], A[i,...A.len-1]
+        //                   B[0,...B.len-1]  => B[0,...j-1], B[j,...B.len-1]
+        // if i, j is correct answer, it's will follow this rules:
+        // j = (m + n + 1) / 2 - i 
+        // A[i-1] <= B[j]
+        // B[j-1] <= A[i]
+
+        //Your runtime beats 99.35 % of cpp submissions
+        //Your memory usage beats 94.29 % of cpp submissions (9.5 MB)
+
+        int m = nums1.size();
+        int n = nums2.size();
+
+        if (m > n) // 少分几次，选少的数组进行二分
+        {
+            return findMedianSortedArrays(nums2, nums1);
+        }
+        int iMin = 0;
+        int iMax = m;
+        while (iMin < iMax)
+        {
+            /* code */
+            int i = (iMin + iMax) / 2;
+            int j = (m + n + 1) / 2 - i;
+
+            if (i != m && j != 0 && nums2[j - 1] > nums1[i]) // 分少了
+            {
+                iMin = i + 1;
+            }
+            else
+            {
+                iMax = i;
+            }
+        }
+        int i = iMax;
+        int j = (m + n + 1) / 2 - i;
+
+        int maxLeft;
+        if (i == 0)
+        {
+            maxLeft = nums2[j - 1];
+        }
+        else if (j == 0)
+        {
+            maxLeft = nums1[i - 1];
+        }
+        else
+        {
+            maxLeft = max(nums1[i - 1], nums2[j - 1]);
+        }
+
+        if ((m + n) & 1)
+        {
+            return maxLeft;
+        }
+
+        int minRight;
+        if (i == m)
+        {
+            minRight = nums2[j];
+        }
+        else if (j == n)
+        {
+            minRight = nums1[i];
+        }
+        else
+        {
+            minRight = min(nums1[i], nums2[j]);
+        }
+        return (maxLeft + minRight) / 2.0;
+    }
+};
+```
