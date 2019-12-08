@@ -393,6 +393,53 @@ public:
 };
 ```
 
+### No.406 根据身高重建队列
+
+假设有打乱顺序的一群人站成一个队列。 每个人由一个整数对(h, k)表示，其中h是这个人的身高，k是排在这个人前面且身高大于或等于h的人数。 编写一个算法来重建这个队列。
+
+#### 一些基本思路
+
+- 
+
+#### 示例代码
+```C++
+class Solution
+{
+public:
+    static bool cmp(vector<int> v1, vector<int> v2)
+    {
+        if (v1[0] != v2[0])
+        {
+            return v1[0] > v2[0];
+        }
+        else
+        {
+            return v1[1] < v2[1];
+        }
+    }
+
+    // 先按照体重降序，体重相等的再根据个数升序
+    // 这样，再将排序后的队列进行插入即可
+    // 每一次插入时，插入在beg+vector[1]的位置都能保证，当前为止的顺序是正确的
+    // 例如，最大的元素时第一个被插入，对应的vector[1]为0，插入在beg+0
+    // 继续插入第二大元素，如果vector[1]为0，肯定插入在beg+0；否则vector[1]为1，插入在beg+1
+
+    vector<vector<int>> reconstructQueue(vector<vector<int>> &people)
+    {
+        sort(people.begin(), people.end(), cmp);
+
+        vector<vector<int>> result;
+        //result.resize(people.size());
+        for (auto &v : people)
+        {
+            result.insert(result.begin() + v[1], v);
+        }
+        result.resize(people.size());
+        return result;
+    }
+};
+```
+
 ## 二分法
 
 针对二分法，要转变原先的思维，将二分法转向夹逼的思想。每次去除一半的可能空间。要深刻理解这句话，明确解空间是什么，取中位数和排除的逻辑，注意不要进入死循环。建议详细参考公众号以下文档：https://mp.weixin.qq.com/s/gjXOjOt32d8oAbb40tN5_Q
