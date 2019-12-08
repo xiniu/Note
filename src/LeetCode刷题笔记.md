@@ -397,6 +397,62 @@ public:
 
 针对二分法，要转变原先的思维，将二分法转向夹逼的思想。每次去除一半的可能空间。要深刻理解这句话，明确解空间是什么，取中位数和排除的逻辑，注意不要进入死循环。建议详细参考公众号以下文档：https://mp.weixin.qq.com/s/gjXOjOt32d8oAbb40tN5_Q
 
+### No.704 二分查找
+
+给定一个 n 个元素有序的（升序）整型数组 nums 和一个目标值 target  ，写一个函数搜索 nums 中的target，如果目标值存在返回下标，否则返回 -1。
+
+#### 一些基本思路
+
+- 最简单的二分场景
+- 或者使用stl的lower_bound/upper_bound
+  - lower_bound：Returns an iterator pointing to the first element in the range [first, last) that is not less than (i.e. greater or equal to) value, or last if no such element is found.
+  - upper_bound:Returns an iterator pointing to the first element in the range [first, last) that is greater than value, or last if no such element is found.
+  
+#### 示例代码
+
+```C++
+class Solution {
+public:
+    // Your runtime beats 95.16 % of cpp submissions
+    // Your memory usage beats 74 % of cpp submissions (10.9 MB)
+    int search(vector<int>& nums, int target) {
+        int begin = 0;
+        int end = nums.size() - 1;
+
+        while (begin < end)
+        {
+            int mid = (begin + end) / 2;
+            if (nums[mid] < target)
+            {
+                begin = mid + 1;
+            } else {
+                end = mid;
+            }
+        }
+        if (nums[begin] == target)
+        {
+            return begin;
+        } else {
+            return -1;
+        } 
+    }
+
+    // Your runtime beats 85.43 % of cpp submissions
+    // Your memory usage beats 70 % of cpp submissions (11 MB)
+    int search2(vector<int>& nums, int target) {
+		auto it = lower_bound(nums.begin(), nums.end(), target);
+		if (it != nums.end() && *it == target)
+		{
+			return it - nums.begin();
+		}
+		else
+		{
+			return -1;
+		}
+	}
+};
+```
+
 ### No.69 x 的平方根
 
 计算并返回 x 的平方根，其中 x 是非负整数。
@@ -425,6 +481,47 @@ public:
         }
         return begin;
         
+    }
+};
+```
+### No.287 寻找重复数
+
+给定一个包含 n + 1 个整数的数组 nums，其数字都在 1 到 n 之间（包括 1 和 n），可知至少存在一个重复的整数。假设只有一个重复的整数，找出这个重复的数。
+- 不能更改原数组（假设数组是只读的）。
+- 只能使用额外的 O(1) 的空间。
+- 时间复杂度小于 O(n^2) 。
+- 数组中只有一个重复的数字，但它可能不止重复出现一次。
+
+### 一些基本思路
+
+- 根据要求无法使用set/map等对象辅助，不能更改数组即不能排序
+- 这个地方比较精巧的使用二分法，以往都是二分数组下标；但是二分的精髓时对解空间二分。我们知道，重复数字肯定在1-n之间（解空间）。排除的逻辑时什么呢？假设没有重复数据，对于每个数字x，小于等于x的数字刚好等于x；回到原场景，如果对于中位数m，如果小于等于m的个数大于m，证明0-m肯定存在重复数字
+
+### 示例代码
+
+```C++
+class Solution {
+public:
+    int findDuplicate(vector<int>& nums) {
+        int beg = 1;
+        int end = nums.size() - 1;
+        while (beg < end)
+        {
+            int mid = (beg + end) / 2;
+            int cnt = 0;
+            for (int i = 0; i < nums.size(); i++) {
+                if (nums[i] <= mid) {
+                    cnt++;
+                }
+            }
+            if (cnt > mid) // this is important
+            {
+                end = mid;
+            } else {
+                beg = mid + 1;
+            }  
+        }
+        return beg;
     }
 };
 ```
