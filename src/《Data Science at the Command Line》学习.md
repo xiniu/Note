@@ -26,3 +26,6 @@ https://www.datascienceatthecommandline.com/
 
 这是我临时插入的一节，如何再ubuntu上安装docker
 https://cloud.tencent.com/developer/article/1167995
+备注：我再win10的WSL上安装ubuntu然后安装docker时报错了，因此尝试了自己安装虚拟机/购买腾讯云的方式安装，没有遇到问题。并且有钱是真好，腾讯云上的主机挺好用的
+
+## 第二章 
