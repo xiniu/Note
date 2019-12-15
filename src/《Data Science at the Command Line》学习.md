@@ -77,4 +77,63 @@ test.txt
 
 ### 2.3 一些GNU/Linux的基本概念
 
-#### 2.3.1
+#### 2.3.1 环境
+
+环境被以下四层定义
+- 命令行工具：例如`ls`,`cat`,`jq`
+- 终端
+- shell：shell是一个解析命令的程序。docker镜像中默认使用Bash，但是当你成为专家后，你会想使用Z-sh
+- 操作系统：GNU, which stands for GNU’s not UNIX, refers to the set of basic tools
+
+#### 2.3.2 执行一些基本的命令
+
+- `pwd`
+
+- 一个很长的命令，可以用backslash(\)和管道符分割；分割之后下一行的提示符会变为>，代表continue提示符
+```bash
+[/]$ echo 'Hello'\
+> 'Word' |
+> wc
+      1       1      10
+```
+- `head`
+```
+[/home/data/ch02/data]$ cd /home/data/ch02/data
+[/home/data/ch02/data]$ head -n 3 movies.txt 
+Matrix
+Star Wars
+Home Alone
+```
+
+#### 2.3.3 5种类型命令行工具
+
+- 二进制可执行文件：由源码编译而成，无法通过文本编辑器查看
+- Shell内置程序（Builtin）：例如`cd`,`help`等
+- 解释脚本：是一个文本文件，被二进制可执行文件调用：Python， R， Bash等。你可以阅读并查看他,例如如下脚本是计算阶乘的
+```python
+#!/usr/bin/env python
+
+def factorial(x):
+    result = 1
+    for i in xrange(2, x + 1):
+        result *= i
+    return result
+
+if __name__ == "__main__":
+    import sys
+    x = int(sys.argv[1])
+    print factorial(x:q
+```
+执行方法,因为上面的脚本已经指定了解释器为#!/usr/bin/env python
+```
+[/home/data/ch02]$ ./fac.py 5
+120
+```
+- shell函数：通常比shell脚本要短小。例如如下用法，定义了一个shell函数，然后可以直接调用。一个可以定义shell函数的好地方是.bashrc
+```
+# paste是粘贴合并，将多行合并为一行，默认应该是tab分割，然后把tab分割改为指定的分割符*；最终拼接出的是一个计算表达式，传入bc获取结果
+[/home/data/ch02]$ fac() { (echo 1; seq $1) | paste -s -d\* | bc; }
+[/home/data/ch02]$ fac 5
+120seqq
+```
+- 别名：别名有点像宏，如果经常执行一个命令但是包含相同的命令字，可以使用别名；例如，针对某个特定的命令经常拼写错误，也可以使用别名
