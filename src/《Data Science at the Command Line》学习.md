@@ -1,6 +1,6 @@
 # 《Data Science at the Command Line》学习
 
-https://www.datascienceatthecommandline.com/
+原书参照这个链接：https://www.datascienceatthecommandline.com/
 
 ## 第一章 简介
 
@@ -22,11 +22,13 @@ https://www.datascienceatthecommandline.com/
 
 ### 1.6 一个实际的例子
 
+这个例子当前有点困难，后面再回顾一下
+
 ### 1.7 docker安装
 
 这是我临时插入的一节，如何再ubuntu上安装docker
 https://cloud.tencent.com/developer/article/1167995
-备注：我再win10的WSL上安装ubuntu然后安装docker时报错了，因此尝试了自己安装虚拟机/购买腾讯云的方式安装，没有遇到问题。并且有钱是真好，腾讯云上的主机挺好用的
+备注：我再win10的WSL上安装ubuntu然后安装docker时报错了，因此尝试了自己安装虚拟机/购买腾讯云的方式安装，没有遇到问题。有钱是真好，腾讯云上的主机挺好用的
 
 ## 第二章  开始
 
@@ -41,7 +43,7 @@ https://cloud.tencent.com/developer/article/1167995
 ```bash
 $ docker pull datascienceworkshops/data-science-at-the-command-line # dowaload a image
 ```
-- docker镜像很慢，使用国内源试试https://cloud.tencent.com/developer/article/1335788 ,速度稍微快一点，下载完提示如下
+- docker镜像很慢，使用国内的源试试，参照这个链接：https://cloud.tencent.com/developer/article/1335788 ,速度稍微快一点，但还是需要三个多小时。下载完提示如下
 ```bash
 # Status: Downloaded newer image for datascienceworkshops/data-science-at-the-command-line:latest
 # docker.io/datascienceworkshops/data-science-at-the-command-line:latest
@@ -124,7 +126,7 @@ if __name__ == "__main__":
     x = int(sys.argv[1])
     print factorial(x:q
 ```
-执行方法,因为上面的脚本已经指定了解释器为#!/usr/bin/env python
+执行方法,因为上面的脚本已经指定了解释器为 #!/usr/bin/env python
 ```
 [/home/data/ch02]$ ./fac.py 5
 120
@@ -248,8 +250,8 @@ https://www.howtogeek.com/howto/ubuntu/keyboard-shortcuts-for-bash-command-shell
   - Ctr + _ ： Undo，但是这个和googl浏览器的缩放冲突了
 - 拷贝和粘贴（略）
 - 大小写转化
- - Alt + U： 将当前光标到当前单词结尾，转为大写
- - Alt + L： 将当前光标到当前单词结尾，转为小写
+  - Alt + U： 将当前光标到当前单词结尾，转为 
+  - Alt + L： 将当前光标到当前单词结尾，转为小写
 - Tab 补全，非常有用
 - 历史
 
