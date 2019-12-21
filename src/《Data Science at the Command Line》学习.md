@@ -26,9 +26,9 @@
 
 ### 1.7 docker安装
 
-这是我临时插入的一节，如何再ubuntu上安装docker
+这是我临时插入的一节，如何再ubuntu上安装docker。参照了如下指导：
 https://cloud.tencent.com/developer/article/1167995
-备注：我再win10的WSL上安装ubuntu然后安装docker时报错了，因此尝试了自己安装虚拟机/购买腾讯云的方式安装，没有遇到问题。有钱是真好，腾讯云上的主机挺好用的
+备注：我再win10的WSL上安装ubuntu然后安装docker时报错了，因此尝试了自己安装虚拟机/购买腾讯云的方式安装，没有遇到问题。any way， 有钱是真好，腾讯云上的主机挺好用的
 
 ## 第二章  开始
 
@@ -278,7 +278,7 @@ https://www.howtogeek.com/howto/ubuntu/keyboard-shortcuts-for-bash-command-shell
 
 #### 3.2.2 远程工具箱
 
-主要使用scp命令，可以学习下
+主要使用scp命令，可以学习下。后面将最基础的用法补充下，方便用于在linux各机器间传递数据
 
 #### 3.3 解压文件
 
@@ -370,4 +370,4 @@ $ in2csv data/imdb-250.xlsx | head | csvcut -c Title,Year,Rating | csvlook
 |  Beauty and the Beast (1991)             | 1991 | 8       |
 |------------------------------------------+------+---------|
 ```
-- 多个sheet页如何转化：一个电子表格如果含有多个sheet页，需要在in2csv中同各国--sheet指定；默认只转化第一个sheet页
+- 多个sheet页如何转化：一个电子表格如果含有多个sheet页，需要在in2csv中各个--sheet指定；默认只转化第一个sheet页
