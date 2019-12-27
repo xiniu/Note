@@ -51,6 +51,7 @@ $ docker pull datascienceworkshops/data-science-at-the-command-line # dowaload a
 - 运行镜像,运行成功后命令提示符就已经变了。运行whoami提示是root用户
 ```bash
 $ docker run --rm -it datascienceworkshops/data-science-at-the-command-line
+alias dr='docker run --rm -it datascienceworkshops/data-science-at-the-command-line' 
 ```
 - 根据书的提示，可以试一下cowsay这个有趣的命令
 ```bash
@@ -335,7 +336,7 @@ esac
 $ unpack logs.tar.gz
 ```
 
-#### 3.5 转化Excel
+#### 3.4 转化Excel
 
 CSV文件格式：
 - 每行一个Record，用CRLF分割
@@ -371,3 +372,79 @@ $ in2csv data/imdb-250.xlsx | head | csvcut -c Title,Year,Rating | csvlook
 |------------------------------------------+------+---------|
 ```
 - 多个sheet页如何转化：一个电子表格如果含有多个sheet页，需要在in2csv中各个--sheet指定；默认只转化第一个sheet页
+
+#### 3.5 查询关系数据库
+
+多数公司将数据存储在关系型数据库中，例如：Mysql，PostgreSql,SQlite等。不同数据库的交互方式差异很大。幸运的是存在一个工具`sql2csv`，可以使用这个工具去跟不同的数据库交互，使用该工具读取SQLite数据库的例子如下：
+```
+ sql2csv --db 'sqlite:///iris.db' --query 'SELECT * FROM iris WHERE sepal_length > 7.5'  
+ # 这个地方有点反人类，默认是从当前路径下找的，
+ # 按照注释这个地方应该是dialect+driver://username:password@host:port/database。
+ # 那么也就是说，三个///不是路径。如果要写绝对路径
+ sql2csv --db 'sqlite:////home/data/ch03/data/iris.db' --query 'SELECT * FROM iris WHERE sepal_length > 7.5'
+ # 具体可以参照这个文档 https://csvkit.readthedocs.io/en/0.9.1/tutorial.html
+```
+
+#### 3.6 从网络下载
+
+cURL工具是从网络下载数据的瑞士军刀。使用cURL下载数据时，这个工具只是打印到标准输出，下面的工具下载一部小说，并打印前10行
+```
+curl -s http://www.gutenberg.org/files/76/76-0.txt | head -n 10 # -s means scilent, if not, it will print progress and so on
+curl  http://www.gutenberg.org/files/76/76-0.txt > a.txt # -s  is no need this time
+curl  http://www.gutenberg.org/files/76/76-0.txt > a.txt
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+ 97  601k   97  584k    0     0   9889      0  0:01:02  0:01:00  0:00:02  7948
+# 其实也没啥好奇怪的，看起来进度信息等是用stderr输出的
+curl  http://www.gutenberg.org/files/76/76-0.txt -o ./b.txt # 也可以直接使用-o参数
+
+# 如果是ftp，使用相同的方法，如果需要密码，可以使用 -u 参数。如果指定的url是个文件夹，会列出所有文件
+curl -u username:password ftp://host/file
+
+# 使用短网址时要指定-L/--location参数
+# -I/--head参数代表，只获取http头相关信息
+curl -I http://www.gutenberg.org/files/76/76-0.txt
+HTTP/1.1 200 OK
+Server: Apache
+Last-Modified: Fri, 23 Feb 2018 20:53:52 GMT
+Accept-Ranges: none
+Content-Length: 616320
+X-Frame-Options: sameorigin
+X-Connection: Close
+Content-Type: text/plain
+X-Powered-By: 1
+Date: Fri, 27 Dec 2019 13:43:35 GMT
+X-Varnish: 382372871
+Age: 0
+Via: 1.1 varnish
+```
+
+#### 3.7 访问webAPI
+
+web API指的是WEB 应用可编程接口（Application Programming Interface）.他一般提供的数据不是美观的，但是一般时结构化的，例如JSON或者XML，可以很方便的被其他工具处理，例如jq。
+```
+curl -s https://randomuser.me/api/1.2/ | jq .
+{
+  "results": [
+    {
+      "gender": "male",
+      "name": {
+        "title": "mr",
+        "first": "armand",
+        "last": "richard"
+      },
+      ...
+```
+文中举例子的从twitter获取数据的例子暂时无法执行，所以需要鉴权的一些接口暂时还不会使用
+
+
+#### 3.8 进一步阅读
+
+- SQL Cookbook
+- List of Http Status Codes
+
+## 第四章  创建可重用的命令行工具
+
+
+
+
