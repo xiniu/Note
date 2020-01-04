@@ -453,15 +453,99 @@ curl -s https://randomuser.me/api/1.2/ | jq .
 - 使得Python/R/Java代码成为工具的一部分
 
 ### 4.2 将命令行转为Shell脚本
-如下的命令是统计电子书《Adventures of Huckleberry Finn》中出现top10 的单词，具体解释如下：
+如下的命令是统计电子书《Adventures of Huckleberry Finn》中出现top10 的单词:
+```shell
+curl -s http://www.gutenberg.org/files/76/76-0.txt | 
+> tr '[:upper:]' '[:lower:]' | 
+> grep -oE '\w+' | 
+> sort | 
+> uniq -c | 
+> sort -nr | 
+> head -n 10
+   6439 and
+   5077 the
+   3666 i
+   3258 a
+   3022 to
+   2567 it
+   2086 t
+   2044 was
+   1847 he
+   1777 of
+```
+具体解释如下：
 - 使用`curl`下载
 - 使用`tr`转为，将大写转小写
-- 使用`grep`展开所有单词并把单词每行一个放置
+- 使用`grep`展开所有单词并把单词每行一个放置,去除符号
+```
+echo "Hello world! Hello dream!" | grep -oE '\w+'
+Hello
+world
+Hello
+dream
+```
 - 使用`sort`用字典序排序
 - 使用`uniq`移除重复行并计数
 - 使用`sort`排序，按照数字顺序,注意是降序
+```
+# sort和uniq的用法要学习一下
+```shell
+echo "Hello world! Hello dream!" | grep -oE '\w+' |
+> sort
+Hello
+Hello
+dream
+world
+
+echo "Hello world! Hello dream!" | grep -oE '\w+' | sort |
+> uniq -c
+      2 Hello
+      1 dream
+      1 world
+echo "Hello world! Hello dream!" | grep -oE '\w+' | sort | uniq -c | sort -nr
+      2 Hello
+      1 world
+      1 dream
+echo "Hello world! Hello dream!" | grep -oE '\w+' | sort | uniq -c | sort -n
+      1 dream
+      1 world
+      2 Hello
+```
 - 使用`top`保留前10行
 
+通过以下几个步骤将这些one-lines转化成命令行工具--其实就是脚本：
+- 粘贴复制到文件
+- 增加可执行权限
+- 增加shebang
+- 移除固定的输入
+- 增加参数
+- 扩展PATH变量
 
+#### 4.2.1 粘贴复制
 
+将我们的粘贴到文件top-words-1.sh 
+```
+$vi top-words-1.sh 
+curl -s http://www.gutenberg.org/files/76/76-0.txt |
+tr '[:upper:]' '[:lower:]' | grep -oE '\w+' | sort |
+uniq -c | sort -nr | head -n 10
+```
+然后可以通过如下方式运行了,无法自己单独执行：
+```
+bash top-words-1.sh 
+```
+一个shell的小技巧：`!!`会扩展为上次运行的命令。因此如果你想要将上次运行的命令保存的脚本，直接可以使用echo "!!" > scriptname
+
+#### 4.2.2  添加可执行权限
+
+一个shell技巧，将top-words-1.sh复制到top-words-2.sh
+```
+cp top-words-{1,2}.sh
+cp top-words-1.{sh,sh.back}  # 这个可以快速用于备份
+ls -l
+total 44
+...
+-rw-r--r-- 1 root root  139 Sep 11  2018 top-words-1.sh
+-rw-r--r-- 1 root root  139 Jan  4 04:02 top-words-1.sh.back
+```
 
