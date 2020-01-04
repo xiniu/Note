@@ -548,4 +548,140 @@ total 44
 -rw-r--r-- 1 root root  139 Sep 11  2018 top-words-1.sh
 -rw-r--r-- 1 root root  139 Jan  4 04:02 top-words-1.sh.back
 ```
+以下命令用于添加可执行权限
+```
+chmod u+x top-words-2.sh
+```
+- u means we want to change the permission for the user whon owns the file
+- + means add
+- x means permission to excute
+增加权限后就可以用如下方式直接运行，不需要显式调用bash
+```
+./top-words-2.sh
+```
+如果没有添加可执行权限，执行会报错
+```
+./top-words-1.sh
+bash: ./top-words-1.sh: Permission denied
+```
 
+#### 4.2.3  添加shebang
+
+shebang是告诉系统，需要用哪个可执行文件取解析脚本。shebang的意思（#->hash, !->bang）
+```
+#!/usr/bin/env bash
+curl -s http://www.gutenberg.org/files/76/76-0.txt |
+tr '[:upper:]' '[:lower:]' | grep -oE '\w+' | sort |
+uniq -c | sort -nr | head -n 10
+```
+shebang必须要写，尽管大部分unix上默认shell就是bash shell.还有一种写法如下，直接指定bash程序的路径，但是一旦bash安装目录
+不是这个，将无法正常工作。建议使用env,因为env会识别bash安装目录（python也是如此）
+
+#### 4.2.4  移除固定的输入
+
+在我们已经完成的脚本本，我们从网上下载ebook并获取其中使用量最多的单词，我们没有将数据和操作隔离。如果我们需要从其他的ebbok或者txt统计呢？
+因此最好将数据和操作隔离开来。
+```
+#!/usr/bin/env bash
+tr '[:upper:]' '[:lower:]' | grep -oE '\w+' | sort |
+uniq -c | sort -nr | head -n 10
+```
+这样可以用以下方法，通过管道处理我们向处理的文档
+```
+cat data/finn.txt | top-words-4.sh
+```
+
+#### 4.2.5  增加参数
+
+例如，我们可能需要让客户指定，需要获取使用量前10或者前20的单词，最好是将此参数作为命令行的参数，调用时传入
+```
+#!/usr/bin/env bash
+NUM_WORDS="$1"                                        
+tr '[:upper:]' '[:lower:]' | grep -oE '\w+' | sort |
+uniq -c | sort -nr | head -n $NUM_WORDS               
+```
+对于变量，定义时不需要$,使用时需要$. $1代表传入的第一个参数
+```
+cat data/finn.txt | top-words-5.sh 5   
+bash: top-words-5.sh: command not found  # befor you extend PATH, it will not work like this
+
+cat data/finn.txt | ./top-words-5.sh 5
+   6441 and
+   5082 the
+   3666 i
+   3258 a
+   3022 to
+   
+cat data/finn.txt | ./top-words-5.sh   # if not give param, it will report error now
+head: option requires an argument -- 'n'
+Try 'head --help' for more information.
+```
+
+#### 4.2.6  扩展PATH环境变量
+
+如果你向在任何地方都能执行你写命令行工具，你需要把该命令行工具所在路径加到环境变量$PATH中。该环境变量其实就时指定Bash应该去那些地方找可执行的命令行或者其他可执行文件。
+
+- 可以用以下方法，列出当前的PATH变量，每行一个
+```
+echo $PATH | tr ':' '\n'
+/usr/local/sbin
+/usr/local/bin
+/usr/sbin
+/usr/bin
+/sbin
+/bin
+```
+- 
+
+### 4.3 使用Python和R创建命令行工具
+
+使用编程语言而不是Bash脚本的原因：
+
+- 有一些现成的代码
+- 命令行工具可能很复杂，超过100行
+- 需要执行效率高
+
+### 4.3.1 移植shell脚本
+
+python版本如下， R语言版本略
+```
+#!/usr/bin/env python
+import re
+import sys
+from collections import Counter
+num_words = int(sys.argv[1])
+text = sys.stdin.read().lower()
+words = re.split('\W+', text)
+cnt = Counter(words)
+for word, count in cnt.most_common(num_words):
+    print "%7d %s" % (count, word)
+```
+使用重定向的方法执行
+```
+< data/76.txt top-words.py 5
+```
+
+### 4.3.2 处理标准输入流
+
+在命令行中，大部分命令行工具需要使用pipe将上个程序的输出作为下个程序的输入（有些程序会要求在输入之前先读入全部的数据，例如sort和awk，这对输入有限且固定的场景来说没有影像，但是当输入如果时不停止且连续输入的，这种工具就没法正常工作）。对于python来说，可以使用如下脚本处理标准输入
+```python
+#!/usr/bin/env python
+from sys import stdin, stdout
+while True:
+    line = stdin.readline()
+    if not line:
+        break
+    stdout.write("%d\n" % int(line)**2)
+    stdout.flush()
+```
+
+### 4.4 进一步阅读
+
+- 方便构建命令行的工具，简化参数说明/参数解析等。Docopt http://docopt.org/
+- 《Classic Shell Scripting》
+- 《Unix Power Tools》
+- 《Python Text Processing with Nltk 2.0 Cookbook.》
+- 《Python for Data Analysis》
+- 《Learning Ipython for Interactive Computing and Data Visualization》
+- Man 帮助文档书写 http://liw.fi/manpages/
+- 在线收集faq和RFC文档 http://www.faqs.org/faqs/
