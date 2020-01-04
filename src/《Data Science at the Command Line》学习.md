@@ -1152,3 +1152,180 @@ sum
  
  
 ### 5.4 处理XML/HTML和JSON
+
+一般需要将XML/HTML和JSON格式的数据转为CSV：
+- 很多数据可视化和机器学习算法需要表格数据
+- 很多命令行工具一般只能在纯文本数据操作，例如cut和grep
+
+另外有些时候其实页不需要转化，我们可以将之前的工具直接用在JSON数据上。例如，我们想要把gender属性改成sex，可以直接使用sed进行全局替换
+```
+$ cat data/users.json | jq | grep gender
+      "gender": "male",
+      "gender": "female",
+      "gender": "male",
+      "gender": "female",
+      "gender": "male",
+ $ sed -e 's/"gender":/"sex":/g' data/users.json | jq | grep sex
+      "sex": "male",
+      "sex": "female",
+      "sex": "male",
+      "sex": "female",
+      "sex": "male",
+```
+- 查看HTML中的表格，使用grep查看我们看兴趣的元素，可以使用-A参数指定打印匹配到打印后面多少行
+```
+ < wiki.html grep wikitable -A 21
+<table class="wikitable sortable">
+<tr>
+<th>Rank</th>
+<th>Country or territory</th>
+<th>Total length of land borders (km)</th>
+<th>Total surface area (km²)</th>
+<th>Border/area ratio (km/km²)</th>
+</tr>
+<tr>
+<td>1</td>
+<td>Vatican City</td>
+<td>3.2</td>
+<td>0.44</td>
+<td>7.2727273</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Monaco</td>
+<td>4.4</td>
+<td>2</td>
+<td>2.2000000</td>
+</tr>
+```
+- 将我们感兴趣的元素从HTML中提取出来。我们使用scrape工具。我们使用scrape提取"wikitable sortable" 这个class下的<tr>元素或者说行（但是不想要第一行，因为第一个tr元素代表的表格的头），并且放在一个body标签中。
+ ```
+$ < data/wiki.html scrape -b -e 'table.wikitable > tr:not(:first-child)' \
+> > data/table.html
+$ head -n 21 data/table.html
+<!DOCTYPE html>
+<html>
+<body>
+<tr><td>1</td>
+<td>Vatican City</td>
+<td>3.2</td>
+<td>0.44</td>
+<td>7.2727273</td>
+</tr>
+<tr><td>2</td>
+<td>Monaco</td>
+<td>4.4</td>
+<td>2</td>
+<td>2.2000000</td>
+</tr>
+<tr><td>3</td>
+<td>San Marino</td>
+<td>39</td>
+<td>61</td>
+<td>0.6393443</td>
+</tr>
+```
+ - xml2json可以将XML转成JSON
+ ```
+ $ < data/table.html xml2json > data/table.json
+$ < data/table.json jq '.' | head -n 25
+{
+  "html": {
+    "body": {
+      "tr": [
+        {
+          "td": [
+            {
+              "$t": "1"
+            },
+            {
+              "$t": "Vatican City"
+            },
+            {
+              "$t": "3.2"
+            },
+            {
+              "$t": "0.44"
+            },
+            {
+              "$t": "7.2727273"
+            }
+          ]
+        },
+        {
+          "td": [
+ ```
+ - 我们将数据转为json的原因是有一个强大的工具jq，可以很好的处理json数据。下面的命令将提取json中某些部分并整理成格式
+```
+$ < data/table.json jq -c '.html.body.tr[] | {country: .td[1][],border:''.td[2][], surface: .td[3][]}' > data/countries.json
+$ head -n 10 data/countries.json
+{"country":"Vatican City","border":"3.2","surface":"0.44"}
+{"country":"Monaco","border":"4.4","surface":"2"}
+{"country":"San Marino","border":"39","surface":"61"}
+{"country":"Liechtenstein","border":"76","surface":"160"}
+{"country":"Sint Maarten (Netherlands)","border":"10.2","surface":"34"}
+{"country":"Andorra","border":"120.3","surface":"468"}
+{"country":"Gibraltar (United Kingdom)","border":"1.2","surface":"6"}
+{"country":"Saint Martin (France)","border":"10.2","surface":"54"}
+{"country":"Luxembourg","border":"359","surface":"2586"}
+{"country":"Palestinian territories","border":"466","surface":"6220"}
+```
+ - 将json数据转为csv
+ ```
+$  < data/countries.json json2csv -p -k border,surface > data/countries.csv
+$ head -n 11 data/countries.csv | csvlook
+| border |  surface |
+| ------ | -------- |
+|    3.2 |     0.44 |
+|    4.4 |     2.00 |
+|   39.0 |    61.00 |
+|   76.0 |   160.00 |
+|   10.2 |    34.00 |
+|  120.3 |   468.00 |
+|    1.2 |     6.00 |
+|   10.2 |    54.00 |
+|  359.0 | 2,586.00 |
+|  466.0 | 6,220.00 |
+
+ ```
+
+### 5.5 CSV文件的一些惯用操作
+
+#### 5.5.1  提取和保存列
+
+- 使用csvcut -c提取关注的行 
+```
+$ head data/iris.csv
+sepal_length,sepal_width,petal_length,petal_width,species
+5.1,3.5,1.4,0.2,Iris-setosa
+4.9,3.0,1.4,0.2,Iris-setosa
+4.7,3.2,1.3,0.2,Iris-setosa
+4.6,3.1,1.5,0.2,Iris-setosa
+5.0,3.6,1.4,0.2,Iris-setosa
+5.4,3.9,1.7,0.4,Iris-setosa
+4.6,3.4,1.4,0.3,Iris-setosa
+5.0,3.4,1.5,0.2,Iris-setosa
+4.4,2.9,1.4,0.2,Iris-setosa
+
+$ < data/iris.csv csvcut -c sepal_length,petal_length,sepal_width,petal_width |
+> head -n 5 | csvlook
+| sepal_length | petal_length | sepal_width | petal_width |
+| ------------ | ------------ | ----------- | ----------- |
+|          5.1 |          1.4 |         3.5 |         0.2 |
+|          4.9 |          1.4 |         3.0 |         0.2 |
+|          4.7 |          1.3 |         3.2 |         0.2 |
+|          4.6 |          1.5 |         3.1 |         0.2 |
+```
+
+- 也可以通过-C参数指定不关注的行
+```
+$ < data/iris.csv csvcut -C species |  head -n 5 | csvlook
+| sepal_length | sepal_width | petal_length | petal_width |
+| ------------ | ----------- | ------------ | ----------- |
+|          5.1 |         3.5 |          1.4 |         0.2 |
+|          4.9 |         3.0 |          1.4 |         0.2 |
+|          4.7 |         3.2 |          1.3 |         0.2 |
+|          4.6 |         3.1 |          1.5 |         0.2 |
+```
+
+
