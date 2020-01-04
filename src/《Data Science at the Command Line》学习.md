@@ -476,7 +476,7 @@ curl -s http://www.gutenberg.org/files/76/76-0.txt |
 具体解释如下：
 - 使用`curl`下载
 - 使用`tr`转为，将大写转小写
-- 使用`grep`展开所有单词并把单词每行一个放置,去除符号
+- 使用`grep`展开所有单词并把单词每行一个放置,去除符号---可以和之前的paste命令对比，将多行合并一行
 ```
 echo "Hello world! Hello dream!" | grep -oE '\w+'
 Hello
@@ -691,4 +691,464 @@ while True:
 - 大部分工具都只能支持一种格式的数据，因此需要关注数据转化
 - CSV是一种我们常用的格式，但是这种格式并不利于工作，经常会被破坏
 - 一旦数据格式转成我们想要到，我们有大量的工作取做一些清洗的工作（例如，过滤，替换，合并等）。有大量的工具可以使用：cut， sed， jq， csvgrep
-- 有时我们也需要将我们的输出数据重新转化。例如，将uniq -c的结果转成CSV格式
+- 有时我们也需要将我们的输出数据重新转化。例如，将uniq -c的结果转成CSV格式,如下所示
+```
+$ echo -e 'foo\nbar\nfoo' | sort | uniq -c | sort -nr   # 为了使用转义字符，使用-e
+      2 foo
+      1 bar
+
+$ echo -e "foo\nbar\nfoo" | sort | uniq -c | sort -nr | awk '{print $2","$1}' |  header -a value,count
+value,count
+foo,2
+bar,1
+```
+
+### 5.1 概览
+
+- 转化数据的格式
+- 在csv文件上做SQL查询
+- 解析和替换值
+- 分割，合并和解析某列
+
+### 5.2 针对纯文本数据的清洗操作
+
+纯文本指的是人类可阅读字符序列在加上一些特定的控制字符（tab/newline）。在本文中，我们指的是不是那些表格形式（CSV）或者结构化（JSON或者HTML）的数据。
+
+#### 5.2.1 过滤行
+
+##### 5.2.1.1 基于位置
+
+先创建一个测试的文件，tee命令（将标准输入写入到文件）
+```
+ seq -f "Line %g" 10 | tee lines
+Line 1
+Line 2
+Line 3
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8
+Line 9
+Line 10
+```
+- 打印前三行
+```
+< lines head -n 3
+Line 1
+Line 2
+Line 3
+< lines sed -n '1,3p'
+Line 1
+Line 2
+Line 3
+< lines awk 'NR<=3'
+Line 1
+Line 2
+Line 3
+```
+- 打印最后三行
+```
+< lines tail -n 3
+Line 8
+Line 9
+Line 10
+```
+- 移除前三方
+```
+< lines tail -n +4
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8
+Line 9
+Line 10
+< lines sed '1,3d'
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8
+Line 9
+Line 10
+< lines sed -n '1,3!p'
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8
+Line 9
+Line 10
+```
+- 移除最后三方
+```
+< lines head -n -3
+Line 1
+Line 2
+Line 3
+Line 4
+Line 5
+Line 6
+Line 7
+```
+- 打印中间行（4-6）
+```
+$ < lines sed -n '4,6p'
+Line 4
+Line 5
+Line 6
+$ < lines awk '(NR>=4)&&(NR<=6)'
+Line 4
+Line 5
+Line 6
+$ < lines head -n 6 | tail -n 3
+Line 4
+Line 5
+Line 6
+```
+- 打印奇数行
+```
+$ < lines sed -n '1~2p'  # 指定开始和step即可
+Line 1
+Line 3
+Line 5
+Line 7
+Line 9
+$ < lines awk 'NR%2'  # 使用模运算
+Line 1
+Line 3
+Line 5
+Line 7
+Line 9
+```
+- 打印偶数行
+```
+$ < lines sed -n '0~2p'
+Line 2
+Line 4
+Line 6
+Line 8
+Line 10
+$ < lines awk '(NR+1)%2'
+Line 2
+Line 4
+Line 6
+Line 8
+Line 10
+```
+
+##### 5.2.1.2 基于模式匹配
+
+grep是经典的文本过滤工具，会打印每一行匹配到的行，如下，打印所有包含chapter的行，忽略大小写
+```
+grep -i chapter alice.txt
+CHAPTER I. Down the Rabbit-Hole
+CHAPTER II. The Pool of Tears
+CHAPTER III. A Caucus-Race and a Long Tale
+CHAPTER IV. The Rabbit Sends in a Little Bill
+CHAPTER V. Advice from a Caterpillar
+CHAPTER VI. Pig and Pepper
+CHAPTER VII. A Mad Tea-Party
+CHAPTER VIII. The Queen's Croquet-Ground
+CHAPTER IX. The Mock Turtle's Story
+CHAPTER X. The Lobster Quadrille
+CHAPTER XI. Who Stole the Tarts?
+CHAPTER XII. Alice's Evidence
+```
+通常情况下，grep按普通的字符串处理partten，指定-E参数可以是能正则匹配
+```
+grep -E '^CHAPTER (.*)\. The' alice.txt 
+CHAPTER II. The Pool of Tears
+CHAPTER IV. The Rabbit Sends in a Little Bill
+CHAPTER VIII. The Queen's Croquet-Ground
+CHAPTER IX. The Mock Turtle's Story
+CHAPTER X. The Lobster Quadrille
+```
+
+##### 5.2.1.3 随机匹配
+命令行工具sample随机获取一个子集，可以指定采样率(每一行有%1的几率被打印出来，但并代表最后一定有10行数据)。
+```
+seq 1000 | sample -r 1% | jq -c '{line: .}'
+{"line":243}
+{"line":392}
+{"line":409}
+{"line":495}
+{"line":502}
+{"line":562}
+{"line":619}
+{"line":714}
+{"line":715}
+{"line":732}
+{"line":854}
+{"line":878}
+{"line":890}
+{"line":896}
+{"line":897}
+```
+sample在你debug工具时有其他的用途：1，如果输入数据非常大，且时连续的，可以使用sample降低数据量；2，当你不想影响采样率，你可以使用定时器。如下时每行输出后停顿1s，这样执行5s后.
+```
+seq 1000 | sample -r 1% -d 1000 -s 5 | jq -c '{line: .}'
+{"line":8}
+{"line":151}
+{"line":182}
+{"line":312}
+{"line":547}
+{"line":584}
+```
+
+#### 5.2.2 提取值
+
+为了电子书中每一章节的名字，我们可以这样
+```
+grep -i chapter alice.txt | cut -d' ' -f3-
+```
+通过cut命令将输入行按照指定的分割符切成fields，然后打印指定的fileds（-f后面跟参数N，N-代表只到最后一列）。使用sed也可以做到相同的效果
+```
+sed -rn 's/^CHAPTER ([IVXLCDM]{1,})\. (.*)$/\2/p' alice.txt 
+sed -rn 's/^CHAPTER ([IVXLCDM]{1,})\. (.*)$/\2/p' alice.txt > /dev/null  # if you can not watch this
+```
+另外，cut命令可以基于字符的位置切割,这不就是列编辑吗？ 哈哈
+```
+$ grep -i chapter alice.txt
+CHAPTER I. Down the Rabbit-Hole
+CHAPTER II. The Pool of Tears
+CHAPTER III. A Caucus-Race and a Long Tale
+CHAPTER IV. The Rabbit Sends in a Little Bill
+CHAPTER V. Advice from a Caterpillar
+CHAPTER VI. Pig and Pepper
+CHAPTER VII. A Mad Tea-Party
+CHAPTER VIII. The Queen's Croquet-Ground
+CHAPTER IX. The Mock Turtle's Story
+CHAPTER X. The Lobster Quadrille
+CHAPTER XI. Who Stole the Tarts?
+CHAPTER XII. Alice's Evidence
+$ grep -i chapter alice.txt | cut -c9-
+I. Down the Rabbit-Hole
+II. The Pool of Tears
+III. A Caucus-Race and a Long Tale
+IV. The Rabbit Sends in a Little Bill
+V. Advice from a Caterpillar
+VI. Pig and Pepper
+VII. A Mad Tea-Party
+VIII. The Queen's Croquet-Ground
+IX. The Mock Turtle's Story
+X. The Lobster Quadrille
+XI. Who Stole the Tarts?
+XII. Alice's Evidence
+```
+grep有一个重要特性时可以将匹配的串分割到不同的行,之前已经见识过
+```
+$ < alice.txt grep -oE '\w{2,}' | head
+Project
+Gutenberg
+Alice
+Adventures
+in
+Wonderland
+by
+Lewis
+Carroll
+This
+```
+如果我们要统计那些以a开始/以e结束的单词，可以使用如下的方法
+```
+< alice.txt  tr '[:upper:]' '[:lower:]' | grep -oE '\w{2,}' | grep -E '^a.*e$'| sort | uniq -c | sort -nr | awk '{print $2","$1}' | header -a word,count | head | csvlook
+| word       | count |
+| ---------- | ----- |
+| alice      |   403 |
+| are        |    73 |
+| archive    |    13 |
+| agree      |    11 |
+| anyone     |     5 |
+| alone      |     5 |
+| age        |     4 |
+| applicable |     3 |
+| anywhere   |     3 |
+```
+
+#### 5.2.2 替换和删除值
+
+- 使用tr替换一个值（将空格替换为_）
+```
+[/home/data/ch05/data]$ echo 'hello word!' | tr ' ' '_'
+hello_word!
+```
+- 使用tr替换多个值（将空格替换为_， ！替换为？）
+```
+[/home/data/ch05/data]$ echo 'hello word!' | tr ' !' '_?'
+hello_word?
+```
+- 删除在集合中的字符
+```
+[/home/data/ch05/data]$ echo 'hello word!' | tr -d '[a-z]'
+ !
+[/home/data/ch05/data]$ echo 'hello word!' | tr -d -c '[a-z]'  # c 代表的补集
+helloword[/home/data/ch05/data]$ 
+```
+- 小写转大写
+```
+$ echo 'hello word!' | tr '[a-z]' '[A-Z'
+HELLO WORD!
+$ echo 'hello word!' | tr '[:lower:]' '[:upper:]'
+HELLO WORD!
+```
+- 在删除，替换这类文本操作上，sed非常用用。例如，删除开头空格以及多个连续空格，并且做替换（hello替换成bay）.-g代表global，代表在一个一行多次匹配而不是只匹配一次
+```
+$ echo ' hello      word!' | sed -re 's/hello/bye/;s/\s+/ /g;s/\s+//'
+bye word!
+```
+
+### 5.3 处理CSV
+
+#### 5.3.1 body&header&cols
+
+首先介绍几个有用的工具
+- body：使用body，将命令只应用到CSV文件的body上，忽略列名（header）。
+几个简单的示例如下：
+```
+$ echo -e "value\n7\n2\n5\n3" | body sort -n
+value
+2
+3
+5
+7
+$ seq 5 | header -a count | wc -l
+6
+$ seq 5 | header -a count | body wc -l
+count
+5
+```
+body的实现如下
+```
+#!/usr/bin/env bash
+IFS= read -r header        
+printf '%s\n' "$header"    
+$@                         
+```
+- header:
+header允许我们操作csv的列名。其实现如下,使用了之前扩展阅读中的getopt工具。
+```
+#!/usr/bin/env bash
+get_header () {
+        for i in $(seq $NUMROWS); do
+                IFS= read -r LINE
+                OLDHEADER="${OLDHEADER}${LINE}\n"
+        done
+}
+
+print_header () {
+        echo -ne "$1"
+}
+
+print_body () {
+        cat
+}
+
+OLDHEADER=
+NUMROWS=1
+
+while getopts "dn:ha:r:e:" OPTION
+do
+        case $OPTION in
+                n)
+                        NUMROWS=$OPTARG
+                        ;;
+                a)
+                        print_header "$OPTARG\n"
+                        print_body
+                        exit 1
+                        ;;
+                d)
+                        get_header
+                        print_body
+                        exit 1
+                        ;;
+                r)
+                        get_header
+                        print_header "$OPTARG\n"
+                        print_body
+                        exit 1
+                        ;;
+                e)
+                        get_header
+                        print_header "$(echo -ne $OLDHEADER | eval $OPTARG)\n"
+                        print_body
+                        exit 1
+                        ;;
+                h)
+                        usage
+                        exit 1
+                        ;;
+        esac
+done
+
+get_header
+print_header $OLDHEADER
+```
+用法如下
+```
+OPTIONS:
+  -n      Number of lines to consider as header [default: 1]
+  -a      Add header
+  -r      Replace header
+  -e      Apply expression to header
+  -d      Delete header
+  -h      Show this message
+
+Example usage:
+  $ seq 10 | header -a 'values'
+  $ seq 10 | header -a 'VALUES' | header -e 'tr "[:upper:]" "[:lower:]"'
+  $ seq 10 | header -a 'values' | header -d
+  $ seq 10 | header -a 'multi\nline' | header -n 2 -e "paste -sd_"
+```
+几个使用的例子：
+```
+cat iris.csv | header  # print header
+sepal_length,sepal_width,petal_length,petal_width,species
+
+cat iris.csv | header -d | head # delete header
+
+seq 5 | header -a line | header -e "tr '[a-z]' '[A-Z]'"  # add and replace
+LINE
+1
+2
+3
+4
+5
+```
+- cols: 允许你在某一些行上做一些操作。代码实现如下,就是先拆分，再合并（中间会生成临时文件，但最后会删除）
+```
+#!/usr/bin/env bash
+ARG="$1"
+shift
+COLUMNS="$1"
+shift
+EXPR="$@"
+DIRTMP=$(mktemp -d)
+mkfifo $DIRTMP/other_columns
+tee $DIRTMP/other_columns | csvcut $ARG $COLUMNS | ${EXPR} |
+paste -d, - <(csvcut ${ARG~~} $COLUMNS $DIRTMP/other_columns)
+rm -rf $DIRTMP
+```
+下面时使用示例
+```
+< tips.csv cols -c day body "tr '[a-z]' '[A-Z]'" | head -n 5 | csvlook -I
+| day | bill  | tip  | sex    | smoker | time   | size |
+| --- | ----- | ---- | ------ | ------ | ------ | ---- |
+| SUN | 16.99 | 1.01 | Female | No     | Dinner | 2    |
+| SUN | 10.34 | 1.66 | Male   | No     | Dinner | 3    |
+| SUN | 21.01 | 3.5  | Male   | No     | Dinner | 3    |
+| SUN | 23.68 | 3.31 | Male   | No     | Dinner | 2    |
+```
+ csvlook -I的目的时禁用类型推理，这个推理有时候比较弱智
+ 
+ #### 5.3.2 在csv文件上做sql查询
+ ```
+seq 5 | header -a value | csvsql --query "SELECT SUM(value) AS sum from stdin"
+sum
+15
+ ```
+ 
+ 
+### 5.4 处理XML/HTML和JSON
