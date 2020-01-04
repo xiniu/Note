@@ -685,3 +685,10 @@ while True:
 - 《Learning Ipython for Interactive Computing and Data Visualization》
 - Man 帮助文档书写 http://liw.fi/manpages/
 - 在线收集faq和RFC文档 http://www.faqs.org/faqs/
+
+## 第五章 清洗数据
+
+- 大部分工具都只能支持一种格式的数据，因此需要关注数据转化
+- CSV是一种我们常用的格式，但是这种格式并不利于工作，经常会被破坏
+- 一旦数据格式转成我们想要到，我们有大量的工作取做一些清洗的工作（例如，过滤，替换，合并等）。有大量的工具可以使用：cut， sed， jq， csvgrep
+- 有时我们也需要将我们的输出数据重新转化。例如，将uniq -c的结果转成CSV格式
