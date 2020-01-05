@@ -1358,4 +1358,314 @@ $ < iris.csv csvsql --query "SELECT sepal_length, petal_length, ""sepal_width, p
 |          4.4 |          1.4 |         2.9 |         0.2 |
 ```
 
+#### 5.5.2  过滤行
 
+- 基于位置的过滤跟纯文本一样，但是注意，要考虑头header。注意使用header和body两个命令
+```
+$ seq 5 | sed -n '3,5p'
+3
+4
+5
+$ seq 5 | header -a count| sed -n '3,5p'
+2
+3
+4
+$ seq 5 | header -a count| body sed -n '3,5p'
+count
+3
+4
+5
+```
+- 基于某一列的模式匹配过滤，需要使用csvgrep，awk，csvsql
+ - 排除size不大于4的订单
+ ```
+$  head tips.csv | csvlook
+|  bill |  tip | sex    | smoker |        day | time   | size |
+| ----- | ---- | ------ | ------ | ---------- | ------ | ---- |
+| 16.99 | 1.01 | Female |  False | 0001-01-07 | Dinner |    2 |
+| 10.34 | 1.66 | Male   |  False | 0001-01-07 | Dinner |    3 |
+| 21.01 | 3.50 | Male   |  False | 0001-01-07 | Dinner |    3 |
+| 23.68 | 3.31 | Male   |  False | 0001-01-07 | Dinner |    2 |
+| 24.59 | 3.61 | Female |  False | 0001-01-07 | Dinner |    4 |
+| 25.29 | 4.71 | Male   |  False | 0001-01-07 | Dinner |    4 |
+|  8.77 | 2.00 | Male   |  False | 0001-01-07 | Dinner |    2 |
+| 26.88 | 3.12 | Male   |  False | 0001-01-07 | Dinner |    4 |
+| 15.04 | 1.96 | Male   |  False | 0001-01-07 | Dinner |    2 |
+
+$ csvgrep -c size -i -r "[1-4]" tips.csv | csvlook
+|  bill |  tip | sex    | smoker | day  | time   | size |
+| ----- | ---- | ------ | ------ | ---- | ------ | ---- |
+| 29.80 | 4.20 | Female |  False | Thur | Lunch  |    6 |
+| 34.30 | 6.70 | Male   |  False | Thur | Lunch  |    6 |
+| 41.19 | 5.00 | Male   |  False | Thur | Lunch  |    5 |
+| 27.05 | 5.00 | Female |  False | Thur | Lunch  |    6 |
+| 29.85 | 5.14 | Female |  False | Sun  | Dinner |    5 |
+| 48.17 | 5.00 | Male   |  False | Sun  | Dinner |    6 |
+| 20.69 | 5.00 | Male   |  False | Sun  | Dinner |    5 |
+| 30.46 | 2.00 | Male   |   True | Sun  | Dinner |    5 |
+| 28.15 | 3.00 | Male   |   True | Sat  | Dinner |    5 |
+ ```
+ - awk也可以做数字类型的比较，例如，获取超过40$的菜单，且在Saturday和Sunday
+```
+ cat tips.csv |  awk -F, '($1 > 40.0) && ($5 ~ /S/)' |
+> header -a bill,tip,sex,smoker,day,time,size | csvlook
+|  bill |   tip | sex    | smoker |        day | time   | size |
+| ----- | ----- | ------ | ------ | ---------- | ------ | ---- |
+| 48.27 |  6.73 | Male   |  False | 0001-01-06 | Dinner |    4 |
+| 44.30 |  2.50 | Female |   True | 0001-01-06 | Dinner |    3 |
+| 48.17 |  5.00 | Male   |  False | 0001-01-07 | Dinner |    6 |
+| 50.81 | 10.00 | Male   |   True | 0001-01-06 | Dinner |    3 |
+| 45.35 |  3.50 | Male   |   True | 0001-01-07 | Dinner |    3 |
+| 40.55 |  3.00 | Male   |   True | 0001-01-07 | Dinner |    2 |
+| 48.33 |  9.00 | Male   |  False | 0001-01-06 | Dinner |    4 |
+```
+- csvsql更鲁棒
+```
+< tips.csv csvsql --query "SELECT * FROM stdin WHERE bill > 40 AND day LIKE '%S%'" | csvlook -I
+| bill  | tip  | sex    | smoker | day | time   | size |
+| ----- | ---- | ------ | ------ | --- | ------ | ---- |
+| 48.27 | 6.73 | Male   | 0      | Sat | Dinner | 4    |
+| 44.3  | 2.5  | Female | 1      | Sat | Dinner | 3    |
+| 48.17 | 5    | Male   | 0      | Sun | Dinner | 6    |
+| 50.81 | 10   | Male   | 1      | Sat | Dinner | 3    |
+| 45.35 | 3.5  | Male   | 1      | Sun | Dinner | 3    |
+| 40.55 | 3    | Male   | 1      | Sun | Dinner | 2    |
+| 48.33 | 9    | Male   | 0      | Sat | Dinner | 4    |
+```
+
+$ < names-comma.csv  csvsql --query "SELECT id, first_name || ' ' || last_name AS full_name, born FROM stdin" | csvlook -I
+| id | full_name             | born |
+| -- | --------------------- | ---- |
+| 1  | John Williams         | 1932 |
+| 2  | Danny Elfman          | 1953 |
+| 3  | James Horner          | 1953 |
+| 4  | Howard Shore          | 1946 |
+| 5  | Hans Zimmer           | 1957 |
+| 6  | Ludwig Beethoven, van | 1770 |
+[/home/data/ch05/data]$ < names-comma.csv  Rio -e 'df$full_name <- paste(df$first_name, df$last_name);df[c("id","full_name","born")]' | csvlook -I
+| id | full_name             | born |
+| -- | --------------------- | ---- |
+| 1  | John Williams         | 1932 |
+| 2  | Danny Elfman          | 1953 |
+| 3  | James Horner          | 1953 |
+| 4  | Howard Shore          | 1946 |
+| 5  | Hans Zimmer           | 1957 |
+| 6  | Ludwig Beethoven, van | 1770 |
+
+当我们想要提取的值分布在不同的列时，我们需要合并这些列。常见的例如：时间或者名字。假设有以下一个csv文件，现在需要将名和姓合并
+```
+$ < names.csv csvlook -I
+| id | last_name | first_name | born |
+| -- | --------- | ---------- | ---- |
+| 1  | Williams  | John       | 1932 |
+| 2  | Elfman    | Danny      | 1953 |
+| 3  | Horner    | James      | 1953 |
+| 4  | Shore     | Howard     | 1946 |
+| 5  | Zimmer    | Hans       | 1957 |
+```
+- 使用sed：需要两条语句，第一条替换头，第二条时一个正则，带引用的正则
+```shell
+$ < names.csv sed -re '1s/.*/id,full_name,born/g;2,$s/(.*),(.*),(.*),(.*)/\1,\3 \2,\4/g' | csvlook -I
+| id | full_name     | born |
+| -- | ------------- | ---- |
+| 1  | John Williams | 1932 |
+| 2  | Danny Elfman  | 1953 |
+| 3  | James Horner  | 1953 |
+| 4  | Howard Shore  | 1946 |
+| 5  | Hans Zimmer   | 1957 |
+```
+- awk
+```
+< names.csv awk -F, 'BEGIN{OFS=","; print "id,full name,born"}''{if(NR > 1){print $1,$3" "$2,$4}}' | csvlook -I
+| id | full name     | born |
+| -- | ------------- | ---- |
+| 1  | John Williams | 1932 |
+| 2  | Danny Elfman  | 1953 |
+| 3  | James Horner  | 1953 |
+| 4  | Howard Shore  | 1946 |
+| 5  | Hans Zimmer   | 1957 |
+```
+- cols + tr
+```
+$ cat  names.csv | cols -c first_name,last_name tr \",\" \" \" | header -r full_name,id,born | csvcut -c id,full_name,born | csvlook -I
+| id | full_name     | born |
+| -- | ------------- | ---- |
+| 1  | John Williams | 1932 |
+| 2  | Danny Elfman  | 1953 |
+| 3  | James Horner  | 1953 |
+| 4  | Howard Shore  | 1946 |
+| 5  | Hans Zimmer   | 1957 |
+```
+- cscsql： 链接字符串需要使用||
+```
+< names.csv  csvsql --query "SELECT id, first_name || ' ' || last_name AS full_name, born FROM stdin" | csvlook -I
+| id | full_name     | born |
+| -- | ------------- | ---- |
+| 1  | John Williams | 1932 |
+| 2  | Danny Elfman  | 1953 |
+| 3  | James Horner  | 1953 |
+| 4  | Howard Shore  | 1946 |
+| 5  | Hans Zimmer   | 1957 |
+```
+
+如果last_name包含一个逗号怎么处理呢？只有csvsql的方法能成功，其他三种会失败；另外还有一种R语言的版本,后面会继续讨论
+```
+$ cat names-comma.csv
+id,last_name,first_name,born
+1,Williams,John,1932
+2,Elfman,Danny,1953
+3,Horner,James,1953
+4,Shore,Howard,1946
+5,Zimmer,Hans,1957
+6,"Beethoven, van",Ludwig,1770
+
+$ < names-comma.csv  csvsql --query "SELECT id, first_name || ' ' || last_name AS full_name, born FROM stdin" | csvlook -I
+| id | full_name             | born |
+| -- | --------------------- | ---- |
+| 1  | John Williams         | 1932 |
+| 2  | Danny Elfman          | 1953 |
+| 3  | James Horner          | 1953 |
+| 4  | Howard Shore          | 1946 |
+| 5  | Hans Zimmer           | 1957 |
+| 6  | Ludwig Beethoven, van | 1770 |
+$ < names-comma.csv  Rio -e 'df$full_name <- paste(df$first_name, df$last_name);df[c("id","full_name","born")]' | csvlook -I
+| id | full_name             | born |
+| -- | --------------------- | ---- |
+| 1  | John Williams         | 1932 |
+| 2  | Danny Elfman          | 1953 |
+| 3  | James Horner          | 1953 |
+| 4  | Howard Shore          | 1946 |
+| 5  | Hans Zimmer           | 1957 |
+| 6  | Ludwig Beethoven, van | 1770 |
+```
+
+#### 5.5.4  将多个csv文件结合
+
+- 垂直连接
+先使用一个工具fieldsplit，将原先使用的csv拆分一下( the delimiter (-d), that we want to keep the header in each file (-k), the column whose values dictate the possible output files (-F), the relative output path (-p), and the filename suffix (-s))
+```
+$ < iris.csv fieldsplit -d, -k -F species -p . -s .csv
+$ ls -lrt
+total 248
+-rw-r--r-- 1 root root  60758 Sep 11  2018 wiki.html
+lrwxrwxrwx 1 root root     22 Sep 11  2018 users.json -> ../../.data/users.json
+lrwxrwxrwx 1 root root     20 Sep 11  2018 tips.csv -> ../../.data/tips.csv
+-rw-r--r-- 1 root root    129 Sep 11  2018 names.csv
+-rw-r--r-- 1 root root    160 Sep 11  2018 names-comma.csv
+-rw-r--r-- 1 root root    179 Sep 11  2018 irismeta.csv
+lrwxrwxrwx 1 root root     20 Sep 11  2018 iris.csv -> ../../.data/iris.csv
+-rw-r--r-- 1 root root 167518 Sep 11  2018 alice.txt
+-rw-r--r-- 1 root root   3216 Jan  5 06:14 Iris-virginica.csv
+-rw-r--r-- 1 root root   3316 Jan  5 06:14 Iris-versicolor.csv
+-rw-r--r-- 1 root root   2916 Jan  5 06:14 Iris-setosa.csv
+```
+需要cat命令即可完成，但是要注意删除除第一个文件外的头
+```
+ $ cat Iris-setosa.csv <(< Iris-versicolor.csv header -d)  <(< Iris-virginica.csv header -d) | sed -n '1p;49,54p' | csvlook
+| sepal_length | sepal_width | petal_length | petal_width | species     |
+| ------------ | ----------- | ------------ | ----------- | ----------- |
+| 4.6          | 3.2         | 1.4          | 0.2         | Iris-setosa |
+| 5.3          | 3.7         | 1.5          | 0.2         | Iris-setosa |
+| 5.0          | 3.3         | 1.4          | 0.2         | Iris-setosa |
+| sepal_length | sepal_width | petal_length | petal_width | species     |
+| 5.1          | 3.5         | 1.4          | 0.2         | Iris-setosa |
+| 4.9          | 3.0         | 1.4          | 0.2         | Iris-setosa |
+```
+更简单的方式是使用csvstack
+```
+csvstack Iris-*.csv | sed -n '1p;49,54p' |  csvlook
+| sepal_length | sepal_width | petal_length | petal_width | species         |
+| ------------ | ----------- | ------------ | ----------- | --------------- |
+|          4.6 |         3.2 |          1.4 |         0.2 | Iris-setosa     |
+|          5.3 |         3.7 |          1.5 |         0.2 | Iris-setosa     |
+|          5.0 |         3.3 |          1.4 |         0.2 | Iris-setosa     |
+|          7.0 |         3.2 |          4.7 |         1.4 | Iris-versicolor |
+|          6.4 |         3.2 |          4.5 |         1.5 | Iris-versicolor |
+|          6.9 |         3.1 |          4.9 |         1.5 | Iris-versicolor |
+```
+可以添加一列，基于文件名
+```
+$ csvstack Iris-*.csv -n origin --filenames | sed -n '1p;49,54p' |  csvlook
+| origin              | sepal_length | sepal_width | petal_length | petal_width | species         |
+| ------------------- | ------------ | ----------- | ------------ | ----------- | --------------- |
+| Iris-setosa.csv     |          4.6 |         3.2 |          1.4 |         0.2 | Iris-setosa     |
+| Iris-setosa.csv     |          5.3 |         3.7 |          1.5 |         0.2 | Iris-setosa     |
+| Iris-setosa.csv     |          5.0 |         3.3 |          1.4 |         0.2 | Iris-setosa     |
+| Iris-versicolor.csv |          7.0 |         3.2 |          4.7 |         1.4 | Iris-versicolor |
+| Iris-versicolor.csv |          6.4 |         3.2 |          4.5 |         1.5 | Iris-versicolor |
+| Iris-versicolor.csv |          6.9 |         3.1 |          4.9 |         1.5 | Iris-versicolor |
+```
+- 水平连接
+假设一个csv按列拆分，分到不同的文件，现在如何合并呢
+```
+$ < tips.csv csvcut -c bill,tip | tee bills.csv | head -n 3| csvlook -I
+| bill  | tip  |
+| ----- | ---- |
+| 16.99 | 1.01 |
+| 10.34 | 1.66 |
+$ < tips.csv csvcut -c day,time | tee datetime.csv | head -n 3| csvlook -I
+| day | time   |
+| --- | ------ |
+| Sun | Dinner |
+| Sun | Dinner |
+$ < tips.csv csvcut -c sex,smoker,size | tee customer.csv | head -n 3| csvlook -I
+| sex    | smoker | size |
+| ------ | ------ | ---- |
+| Female | No     | 2    |
+| Male   | No     | 3    |
+```
+直接使用paste即可
+```
+$ paste -d, {bills,customer,datetime}.csv | head | csvlook -I
+| bill  | tip  | sex    | smoker | size | day | time   |
+| ----- | ---- | ------ | ------ | ---- | --- | ------ |
+| 16.99 | 1.01 | Female | No     | 2    | Sun | Dinner |
+| 10.34 | 1.66 | Male   | No     | 3    | Sun | Dinner |
+| 21.01 | 3.5  | Male   | No     | 3    | Sun | Dinner |
+| 23.68 | 3.31 | Male   | No     | 2    | Sun | Dinner |
+| 24.59 | 3.61 | Female | No     | 4    | Sun | Dinner |
+| 25.29 | 4.71 | Male   | No     | 4    | Sun | Dinner |
+| 8.77  | 2.0  | Male   | No     | 2    | Sun | Dinner |
+| 26.88 | 3.12 | Male   | No     | 4    | Sun | Dinner |
+| 15.04 | 1.96 | Male   | No     | 2    | Sun | Dinner |
+```
+- Joining
+有时候不仅需要水平或者垂直链接，很多数据是分开存储的，我们希望像关系型数据库那样，做几个表的联合查询
+假设除了iris数据，还有一个数据存储的是species和usdaid的对应关系，我们希望将这两份数据联合查询,csvjion可以完成这个任务
+```
+$ csvlook irismeta.csv
+| species         | wikipedia_url                                | usda_id |
+| --------------- | -------------------------------------------- | ------- |
+| Iris-versicolor | http://en.wikipedia.org/wiki/Iris_versicolor | IRVE2   |
+| Iris-virginica  | http://en.wikipedia.org/wiki/Iris_virginica  | IRVI    |
+| Iris-setosa     |                                              | IRSE    |
+
+$ csvjoin -c species iris.csv irismeta.csv | csvcut -c sepal_length,sepal_width,species,usda_id | sed -n '1p;49,54p' | csvlook -I
+| sepal_length | sepal_width | species         | usda_id |
+| ------------ | ----------- | --------------- | ------- |
+| 4.6          | 3.2         | Iris-setosa     | IRSE    |
+| 5.3          | 3.7         | Iris-setosa     | IRSE    |
+| 5.0          | 3.3         | Iris-setosa     | IRSE    |
+| 7.0          | 3.2         | Iris-versicolor | IRVE2   |
+| 6.4          | 3.2         | Iris-versicolor | IRVE2   |
+| 6.9          | 3.1         | Iris-versicolor | IRVE2   |
+```
+另外csvsql肯定也可以
+```
+]$ csvsql --query 'SELECT i.sepal_length, i.sepal_width, i.species, m.usda_id '\
+> 'FROM iris i JOIN irismeta m ON (i.species = m.species)' \
+> iris.csv irismeta.csv | sed -n '1p;49,54p' | csvlook
+| sepal_length | sepal_width | species         | usda_id |
+| ------------ | ----------- | --------------- | ------- |
+|          4.6 |         3.2 | Iris-setosa     | IRSE    |
+|          5.3 |         3.7 | Iris-setosa     | IRSE    |
+|          5.0 |         3.3 | Iris-setosa     | IRSE    |
+|          7.0 |         3.2 | Iris-versicolor | IRVE2   |
+|          6.4 |         3.2 | Iris-versicolor | IRVE2   |
+|          6.9 |         3.1 | Iris-versicolor | IRVE2   |
+```
+
+### 5.6 进一步阅读
+- SQL Cookbook 
+- Regular Expressions
+- Sed & Awk
