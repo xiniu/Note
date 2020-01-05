@@ -1327,5 +1327,35 @@ $ < data/iris.csv csvcut -C species |  head -n 5 | csvlook
 |          4.7 |         3.2 |          1.3 |         0.2 |
 |          4.6 |         3.1 |          1.5 |         0.2 |
 ```
+- 也可以指定列号，从1开始
+```
+$ echo -e 'a,b,c,d,e,f,g,h,i\n1,2,3,4,5,6,7,8,9' |
+> csvcut -c $(seq 1 2 9 | paste -sd,)
+a,c,e,g,i
+1,3,5,7,9
+$ echo $(seq 1 2 9 | paste -sd,)
+1,3,5,7,9
+```
+- 如果值里没有“,”,完全可以使用cut完成相同的功能,注意，cut影响不了列的顺序
+```
+$ echo -e 'a,b,c,d,e,f,g,h,i\n1,2,3,4,5,6,7,8,9' | cut -d, -f5,1,3
+a,c,e
+1,3,5
+```
+- 最后，我们也可以直接在CSV格式数据上使用SQL做提取和保存
+```
+$ < iris.csv csvsql --query "SELECT sepal_length, petal_length, ""sepal_width, petal_width FROM stdin" | head -n 10 | csvlook
+| sepal_length | petal_length | sepal_width | petal_width |
+| ------------ | ------------ | ----------- | ----------- |
+|          5.1 |          1.4 |         3.5 |         0.2 |
+|          4.9 |          1.4 |         3.0 |         0.2 |
+|          4.7 |          1.3 |         3.2 |         0.2 |
+|          4.6 |          1.5 |         3.1 |         0.2 |
+|          5.0 |          1.4 |         3.6 |         0.2 |
+|          5.4 |          1.7 |         3.9 |         0.4 |
+|          4.6 |          1.4 |         3.4 |         0.3 |
+|          5.0 |          1.5 |         3.4 |         0.2 |
+|          4.4 |          1.4 |         2.9 |         0.2 |
+```
 
 
