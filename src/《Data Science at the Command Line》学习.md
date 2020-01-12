@@ -4,7 +4,7 @@
 
 ## 第一章 简介
 
-### 1.2 数据科学（Data Science）就是OSEMN
+### 1.2 数据科学（Data Science）就是OSEMI
 
 - 1.2.1 O-Obtaining Data（获取数据）
 - 1.2.2 S-Scrubbing Data（清洗数据）
@@ -1669,3 +1669,394 @@ $ csvjoin -c species iris.csv irismeta.csv | csvcut -c sepal_length,sepal_width,
 - SQL Cookbook 
 - Regular Expressions
 - Sed & Awk
+
+## 第六章 管理数据工作流
+
+Drake是一个工具，它可以让你：
+- 从输入和输出，格式化数据工作流
+- 执行工作流中特定的的数据流
+- 使用内联代码（意思是没有额外的效率损失？）
+- 从外部源存储和获取数据
+
+### 6.1 概览
+
+- 在Drakefile中定义工作流
+- 从输入和输出的角度考虑工作流
+- 构建具体的目标
+
+### 6.2 介绍Drake
+
+Drake组织命令的执行以及相关步骤之间的依赖，数据工作流被具体描述在一个单独的文件中，每个步骤有一个或者多个输入输出，Drake会自动解决这些步骤之间的依赖，决定哪些步骤会被执行以及用怎样的数据
+
+### 6.3 安装Drake
+
+Drake是用Clojure语言写的，所以需要运行在JVM上。这里因为直接使用的是docker，已经安装完成，用书中所写的方法验证下：
+docker镜像中的drake使用有问题，重新安装时又遇到网站被墙，相关内容暂时无法学习
+
+## 第七章 浏览数据
+
+### 7.1 概览
+
+- 检查数据的格式和属性
+- 计算描述性统计信息：输出时简洁的文本
+- 数据可视化
+
+
+### 7.2 检查数据的格式和属性
+
+#### 7.2.1 是否有头
+```
+head tips.csv
+```
+#### 7.2.2 检查全部数据
+
+cat会打印全部的数据，因此最好使用less -S（-S的目的是不要自动换行wrapped）
+```
+less -S file.csv
+< file.csv csvlook | less -S
+```
+
+#### 7.2.3 对象的名称和数据类型
+
+- 获取对象（列的名字）
+```
+< iris.csv sed -e 's/,/\n/g;q'
+
+# you can define a function in .bashrc
+names () { sed -e 's/,/\n/g;q'; }
+
+# and then you can use:
+< investments2.csv names
+```
+- 如果我们还想打印出数据类型的话，可以使用csvsql。如果直接使用csvsql不加任何参数的话，会打印出创建这样一张表所需要的语句
+```
+$ csvsql datatypes.csv
+CREATE TABLE datatypes (
+        a DECIMAL NOT NULL,
+        b DECIMAL,
+        c BOOLEAN NOT NULL,
+        d VARCHAR NOT NULL,
+        e TIMESTAMP,
+        f DATE,
+        g VARCHAR
+);
+
+```
+
+
+#### 7.2.5 唯一标识符/连续变量/因子
+
+为了识别那个是唯一标识符/那个是类型变量（在R中叫因子），你可以计算下某些列的值去重后的个数
+```
+$ cat iris.csv | csvcut -c species | body "sort | uniq | wc -l"
+species
+3
+```
+更好的方法是使用csvstate，统计每一列的唯一值个数
+```
+[/home/data/ch07/data]$ csvstat investments2.csv  --unique
+  1. company_permalink: 27336
+  2. company_name: 27322
+  3. company_category_list: 8758
+  4. company_market: 442
+  5. company_country_code: 150
+  6. company_state_code: 146
+  7. company_region: 1079
+  8. company_city: 3302
+  9. investor_permalink: 11174
+ 10. investor_name: 11133
+ 11. investor_category_list: 463
+ 12. investor_market: 131
+ 13. investor_country_code: 106
+ 14. investor_state_code: 75
+ 15. investor_region: 545
+ 16. investor_city: 1197
+ 17. funding_round_permalink: 41793
+ 18. funding_round_type: 13
+ 19. funding_round_code: 15
+ 20. funded_at: 3595
+ 21. funded_month: 294
+ 22. funded_quarter: 120
+ 23. funded_year: 34
+ 24. raised_amount_usd: 6146
+```
+如果某一列的唯一值个数和行数一行多，他就可以当作一个唯一值；否则只能当作类别（因子）
+
+### 7.3 计算描述性统计信息
+
+#### 7.3.1 csvstat
+
+csvstat可以给出以下信息：
+- 每一列的数据类型（在python中的数据类型）
+- 是否有控制
+- 唯一值的个数
+- 各种统计指标（最大值，最小值，和，平均值，标准偏差，中位数等）
+```
+$ csvstat datatypes.csv
+  1. "a"
+
+        Type of data:          Number
+        Contains null values:  False
+        Unique values:         3
+        Smallest value:        2
+        Largest value:         66
+        Sum:                   110
+        Mean:                  36.667
+        Median:                42
+        StDev:                 32.332
+        Most common values:    2 (1x)
+                               42 (1x)
+                               66 (1x)
+
+  2. "b"
+
+        Type of data:          Number
+        Contains null values:  True (excluded from calculations)
+        Unique values:         3
+        Smallest value:        0
+        Largest value:         3.142
+        Sum:                   3.142
+        Mean:                  1.571
+        Median:                1.571
+        StDev:                 2.221
+        Most common values:    0 (1x)
+                               3.142 (1x)
+                               None (1x)
+
+  3. "c"
+
+        Type of data:          Boolean
+        Contains null values:  False
+        Unique values:         2
+        Most common values:    False (2x)
+                               True (1x)
+
+  4. "d"
+
+        Type of data:          Text
+        Contains null values:  False
+        Unique values:         3
+        Longest value:         8 characters
+        Most common values:    "Yes!" (1x)
+                               Oh, good (1x)
+                               2198 (1x)
+
+  5. "e"
+
+        Type of data:          DateTime
+        Contains null values:  True (excluded from calculations)
+        Unique values:         3
+        Smallest value:        2011-11-11 11:00:00
+        Largest value:         2014-09-15 00:00:00
+        Most common values:    2011-11-11 11:00:00 (1x)
+                               2014-09-15 00:00:00 (1x)
+                               None (1x)
+
+  6. "f"
+
+        Type of data:          Date
+        Contains null values:  True (excluded from calculations)
+        Unique values:         3
+        Smallest value:        1970-12-06
+        Largest value:         2012-09-08
+        Most common values:    2012-09-08 (1x)
+                               1970-12-06 (1x)
+                               None (1x)
+
+  7. "g"
+
+        Type of data:          Text
+        Contains null values:  True (excluded from calculations)
+        Unique values:         3
+        Longest value:         7 characters
+        Most common values:    12:34 (1x)
+                               0:07 PM (1x)
+                               None (1x)
+
+Row count: 3
+```
+可以指定，给出以下指标
+- `--max`
+- `--min`
+- `--sum`
+- `--mean`
+- `--median`
+- `--stdv`
+- `--nulls`
+- `--unique`
+- `--freq`
+- `--len`
+例如：
+```
+ csvstat datatypes.csv --null
+  1. a: False
+  2. b: True
+  3. c: False
+  4. d: False
+  5. e: True
+  6. f: True
+  7. g: True
+```
+可以通过-c参数指定要分析的列
+```
+$ csvstat datatypes.csv --null -c 1
+False
+```
+但是要注意，就跟cscsql一样，他用的启发式推断可能不准确，一定要手动再确认。还有一个不错的技巧是通过她获取数据的行数
+```
+$ csvstat iris.csv | tail -n 1
+Row count: 150
+```
+
+#### 7.3.1 使用Rio
+
+Rio是一个轻量级的精巧包装过的R语言运行环境。R语言是一个非常有用的统计语言，是解释语言，丰富的扩展包，提供REPL环境。但是，R是一个独立的环境，
+跟命令行工具是隔离开的，所以你无法使用管道pipe等技巧。例如你只是想计算tips.csv中的tip比率，为此你先唤起R运行环境，然后读入，然后保存到一个文件再退出
+```
+R
+> tips <- read.csv('tips.csv', header = T, sep = ',', stringsAsFactors = F)
+> tips.percent <- tips$tip / tips$bill * 100
+> cat(tips.percent, sep = '\n', file = 'percent.csv')
+> q("no")
+```
+以上一个很简单的过程，但是非常麻烦。因此，Rio就出现了，Rio代表 R input/output,你可以再命令行中使用R语言。你可以直接将csv文件通过管道传递给它，然后直接使用R语言(在我本地，产生的结果包含\n的转义字符，所以使用echo -e处理)
+```
+echo -e ` < tips.csv Rio -e 'df$tip / df$bill * 100' `
+5.944673
+16.05416
+```
+可以计算均值/方差/和等
+```
+$ < iris.csv Rio -e 'mean(df$sepal_length)'
+5.843333[/home/data/ch07/data]$ < iris.csv Rio -e 'sd(df$sepal_length)'
+0.8280661[/home/data/ch07/data]$ < iris.csv Rio -e 'sum(df$sepal_length)'
+876.5
+```
+计算某一列的5个统计指标
+```
+< iris.csv Rio -e 'summary(df$sepal_length)'
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+  4.300   5.100   5.800   5.843   6.400   7.900
+```
+计算分布的对称性和峰值（这两个概念没太懂）,计算两个值之间的相关性和矩阵
+```
+< tips.csv Rio -e 'cor(df$bill,df$tip)'
+0.6757341
+
+ < tips.csv  csvcut -c bill,tip | Rio -f cor | csvlook
+|   bill |    tip |
+| ------ | ------ |
+| 1.000… | 0.676… |
+| 0.676… | 1.000… |
+
+```
+可以创建一个命令行格式的分布统计图
+```
+ < iris.csv Rio -e 'stem(df$sepal_length)'
+  The decimal point is 1 digit(s) to the left of the |
+  42 | 0
+  44 | 0000
+  46 | 000000
+  48 | 00000000000
+  50 | 0000000000000000000
+  52 | 00000
+  54 | 0000000000000
+  56 | 00000000000000
+  58 | 0000000000
+  60 | 000000000000
+  62 | 0000000000000
+  64 | 000000000000
+  66 | 0000000000
+  68 | 0000000
+  70 | 00
+  72 | 0000
+  74 | 0
+  76 | 00000
+  78 | 0
+```
+
+### 7.4 数据可视化
+
+#### 7.4.1 Gnuplot 和 Feedgnuplot
+
+feedgnuplot可以读取流数据
+```
+while true; do echo $RANDOM; done | sample -d 10 | feedgnuplot --stream \
+> --terminal 'dumb 80,25' --lines --xlen 10
+
+  35000 +-------------------------------------------------------------------+
+        |      +            +             +             +            +      |
+        |      :            :             :      *      :            :      |
+  30000 |-+....:............:.............:....**.*.....:............:....+-|
+        |      :            :             :  **    *    :            :      |
+        |      :            :             :**      *    :            :      |
+        |*     :            :             *         *   :            :      |
+  25000 |-*....:............*............*:..........*..:............*....+-|
+        |  *   :            **          * :           * :           *:*     |
+        |   *  :           *: *         * :           * :           *:*     |
+  20000 |-+..*.:...........*:..*.......*..:............*:..........*.:.*..+-|
+        |     *:          * :   *     *   :             *          * : *    |
+        |      *          * :   *    *    :             :*        *  :  *   |
+        |      :*        *  :    *   *    :             :*        *  :   *  |
+  15000 |-+....:.*.......*..:.....*.*.....:.............:.*......*...:...*+-|
+        |      :  *     *   :      *      :             :  *     *   :    * |
+        |      :   *    *   :             :             :  *    *    :    * |
+  10000 |-+....:...*...*....:.............:.............:...*...*....:....+*|
+        |      :    *  *    :             :             :    * *     :     *|
+        |      :     **     :             :             :    * *     :      |
+        |      +      *     +             +             +     *      +      |
+   5000 +-------------------------------------------------------------------+
+               98          100           102           104          106
+
+```
+
+#### 7.4.2 ggplot2
+
+ggplot2始终R语言中的可视化实现。可以通过Rio很方便的产生各类图表。Rio期望数据是csv格式，将环境中自带的数据先转化一把
+```
+head immigration.dat
+# IMMIGRATION BY REGION AND SELECTED COUNTRY OF LAST RESIDENCE
+#
+Region  Austria Hungary Belgium Czechoslovakia  Denmark France  Germany Greece  Ireland Italy   Netherlands     Norway       Sweden  Poland  Portugal        Romania Soviet_Union    Spain   Switzerland     United_Kingdom  Yugoslavia  Other_Europe     TOTAL
+1891-1900       234081  181288  18167   -       50231   30770   505152  15979   388416  651893  26758   95015   226266       96720   27508   12750   505290  8731    31179   271538  -       282     3378014
+1901-1910       668209  808511  41635   -       65285   73379   341498  167519  339065  2045877 48262   190505  249534       -       69149   53008   1597306 27935   34922   525950  -       39945   7387494
+1911-1920       453649  442693  33746   3426    41983   61897   143945  184201  146181  1109524 43718   66395   950744813    89732   13311   921201  68611   23091   341408  1888    31400   4321887
+1921-1930       32868   30680   15846   102194  32430   49610   412202  51084   211234  455315  26948   68531   97249227734  29994   67646   61742   28958   29676   339570  49064   42619   2463194
+1931-1940       3563    7861    4817    14393   2559    12623   144058  9119    10973   68028   7150    4740    396017026    3329    3871    1370    3258    5512    31572   5835    11949   377566
+1941-1950       24860   3469    12189   8347    5393    38809   226578  8973    19789   57661   14860   10100   106657571    7423    1076    571     2898    10547   139306  1576    8486    621147
+1951-1960       67106   36637   18575   918     10984   51121   477765  47608   43362   185491  52277   22935   216979985    19588   1039    671     7894    17675   202824  8225    16350   1325727
+```
+使用如下命令转化(删除#开始的行，将tab替换为逗号，替换空值，替换列名Region)
+```
+ < immigration.dat  sed -re '/^#/d;s/\t/,/g;s/,-,/,0,/g;s/Region/''Period/' | tee immigration.csv | head | cut -c1-80
+Period,Austria,Hungary,Belgium,Czechoslovakia,Denmark,France,Germany,Greece,Irel
+1891-1900,234081,181288,18167,0,50231,30770,505152,15979,388416,651893,26758,950
+1901-1910,668209,808511,41635,0,65285,73379,341498,167519,339065,2045877,48262,1
+1911-1920,453649,442693,33746,3426,41983,61897,143945,184201,146181,1109524,4371
+1921-1930,32868,30680,15846,102194,32430,49610,412202,51084,211234,455315,26948,
+1931-1940,3563,7861,4817,14393,2559,12623,144058,9119,10973,68028,7150,4740,3960
+1941-1950,24860,3469,12189,8347,5393,38809,226578,8973,19789,57661,14860,10100,1
+1951-1960,67106,36637,18575,918,10984,51121,477765,47608,43362,185491,52277,2293
+1961-1970,20621,5401,9192,3273,9201,45237,190796,85969,32966,214111,30606,15484,
+
+< immigration.csv csvcut -c Period,Denmark,Netherlands,Norway,Sweden | head | csvlook
+| Period    | Denmark | Netherlands |  Norway |  Sweden |
+| --------- | ------- | ----------- | ------- | ------- |
+| 1891-1900 |  50,231 |      26,758 |  95,015 | 226,266 |
+| 1901-1910 |  65,285 |      48,262 | 190,505 | 249,534 |
+| 1911-1920 |  41,983 |      43,718 |  66,395 |  95,074 |
+| 1921-1930 |  32,430 |      26,948 |  68,531 |  97,249 |
+| 1931-1940 |   2,559 |       7,150 |   4,740 |   3,960 |
+| 1941-1950 |   5,393 |      14,860 |  10,100 |  10,665 |
+| 1951-1960 |  10,984 |      52,277 |  22,935 |  21,697 |
+| 1961-1970 |   9,201 |      30,606 |  15,484 |  17,116 |
+
+```
+这一部分内容就这样吧。因为没有图形化界面，无法直接使用display显示图形
+
+
+
+
+
+
+
