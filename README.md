@@ -323,3 +323,38 @@ sudo cat ubuntu-14.04-x86-minimal.tar.gz | docker import - ubuntu:14.04
 
 
 
+
+
+```
+class Solution5 {
+public:
+	int slution = 0;
+	int biggest = 0;
+
+
+	int divide(int n) {
+		if (n <= 0) {
+			return 0;
+		}
+		slution = 0;
+		biggest = n;
+
+		DFS(n, 0);
+		return slution;
+	}
+	
+	void DFS(int remain, int lastPos) {
+		if (!remain) {
+			slution++;
+			return;
+		}
+		lastPos++;
+		if (lastPos > biggest)
+		{
+			return;
+		}
+		DFS(remain - lastPos, lastPos);
+		DFS(remain, lastPos);
+	}
+};
+```
