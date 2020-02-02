@@ -666,3 +666,66 @@ class Solution
     }
 };
 ```
+
+
+### No.153 寻找旋转排序数组中的最小值
+
+假设按照升序排序的数组在预先未知的某个点上进行了旋转。( 例如，数组 [0,1,2,4,5,6,7]  可能变为 [4,5,6,7,0,1,2] )。请找出其中最小的元素。
+ 
+#### 一些基本思路
+
+使用二分法时，要搞清楚每一次排除一半可能性是怎么排除的。原来的有序数组被旋转，那么此时从左至右是两段上升序列（中间就是那个最低点，最小值）且第二段的最大值肯定要比第一段的最小值都要小。每次拿中间元素跟最后一个元素比较，如果中间元素大，那么这个突降点肯定在后半段
+
+```c++
+class Solution
+{
+public:
+    int findMin(vector<int> &nums)
+    {
+        int len = nums.size();
+        if (!len)
+        {
+            return 0;
+        }
+        int left = 0;
+        int right = len - 1;
+        while (left < right)
+        {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] > nums[right])
+            { // 找这个突降点，因为原数组时升序的，所以...
+                left = mid + 1;
+            }
+            else
+            {
+                right = mid;
+            }
+        }
+        return nums[left];
+    }
+};
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
