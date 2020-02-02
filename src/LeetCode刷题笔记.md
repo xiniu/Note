@@ -705,6 +705,45 @@ public:
     }
 };
 ```
+### No.154 寻找旋转排序数组中的最小值II
+
+假设按照升序排序的数组在预先未知的某个点上进行了旋转。( 例如，数组 [0,1,2,4,5,6,7]  可能变为 [4,5,6,7,0,1,2] )。请找出其中最小的元素。
+但是有重复数字
+ 
+#### 一些基本思路
+这道题的解法，是参考了网上的题解。主要是单独处理相等的情况。我怎么就没想出来呢？ 首先应该基于153，先思考：原先的排除场景是否有效，即nums[mid
+] > nums[r]成立时，l = mid + 1这肯定是正确的；接下来再处理原先代码处理不了的场景：无非就是<和==，<就是原先的逻辑；==的场景比较难办，直接r--。但这样效率最差情况下比较差
+
+```c++
+class Solution
+{
+public:
+    int findMin(vector<int> &nums)
+    {
+        int len = nums.size();
+        if (!len)
+        {
+            return 0;
+        }
+        int left = 0;
+        int right = len - 1;
+        while (left < right)
+        {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] > nums[right])
+            { // 找这个突降点，因为原数组时升序的，所以...
+                left = mid + 1;
+            }
+            else
+            {
+                right = mid;
+            }
+        }
+        return nums[left];
+    }
+};
+```
+
 
 
 
