@@ -734,9 +734,13 @@ public:
             { // 找这个突降点，因为原数组时升序的，所以...
                 left = mid + 1;
             }
-            else
+            else if (nums[mid] < nums[right])
             {
                 right = mid;
+            }
+            else
+            {
+                right--;
             }
         }
         return nums[left];
@@ -744,6 +748,164 @@ public:
 };
 ```
 
+### [1095] 山脉数组中查找目标值
+
+给你一个 山脉数组 mountainArr，请你返回能够使得 mountainArr.get(index) 等于 target 最小 的下标 index
+值
+ 
+#### 一些基本思路
+
+先求出顶峰 peak；然后试图在前半部分寻找，然后试图在后半部分寻找，最共使用三次二分。
+
+```c++
+class Solution
+{
+public:
+    map<int, int> Cache;
+    int getValue(int index, MountainArray &mountainArr)
+    {
+        if (!Cache.count(index))
+        {
+            int v = mountainArr.get(index);
+            Cache[index] = v;
+        }
+        return Cache[index];
+    }
+    int findInMountainArray(int target, MountainArray &mountainArr)
+    {
+
+        // step1 find the peak
+        int length = mountainArr.length();
+
+        int l = 0;
+        int r = length - 1;
+        int peak = r;
+        while (l < r)
+        {
+            peak = l + (r - l) / 2;
+            if (getValue(peak, mountainArr) < getValue(peak + 1, mountainArr))
+            {
+                l = peak + 1;
+            }
+            else
+            {
+                r = peak;
+            }
+        }
+        peak = l;
+
+        // step2 find index in pre-half
+        l = 0;
+        r = peak;
+        while (l < r)
+        {
+            int m = l + (r - l) / 2;
+            if (getValue(m, mountainArr) < target)
+            {
+                l = m + 1;
+            }
+            else
+            {
+                r = m;
+            }
+        }
+        if (getValue(l, mountainArr) == target)
+        {
+            return l;
+        }
+
+        // step3 find index in post-half
+        l = peak;
+        r = length - 1;
+        while (l < r)
+        {
+            int m = l + (r - l) / 2;
+            if (getValue(m, mountainArr) > target)
+            {
+                l = m + 1;
+            }
+            else
+            {
+                r = m;
+            }
+        }
+        if (getValue(l, mountainArr) == target)
+        {
+            return l;
+        }
+
+        return -1;
+    }
+};
+```
+
+
+
+
+
+
+
+
+
+
+
+
+### [1095] 山脉数组中查找目标值
+
+
+找到 K 个最接近的元素
+ 
+#### 一些基本思路
+
+- 寻找lower_bound(二分)
+- 比较lower_bound两边，选取k个数
+
+```
+class Solution
+{
+public:
+    vector<int> findClosestElements(vector<int> &arr, int k, int x)
+    {
+        // find lower_bound x
+        int l = 0;
+        int r = arr.size() - 1;
+        while (l < r)
+        {
+            int m = l + (r - l) / 2;
+            if (arr[m] < x)  // careful
+            {
+                l = m + 1;
+            }
+            else
+            {
+                r = m;
+            }
+        }
+        int begin = l - 1;
+        int end = l;
+        int kbk = k;
+        while (k--)
+        {
+            if (begin < 0 || end < arr.size() && arr[end] - x < x - arr[begin])
+            {
+                end++;
+            }
+            else
+            {
+                begin--;
+            }
+        }
+        begin++;
+        if (begin < 0)
+        {
+            begin = 0;
+        }
+        vector<int> result;
+        result.insert(result.begin(), arr.begin() + begin, arr.begin() + begin + kbk);
+        return result;
+    }
+};
+```
 
 
 
