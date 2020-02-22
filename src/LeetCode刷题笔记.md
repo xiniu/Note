@@ -908,9 +908,106 @@ public:
 ```
 
 
+## 动态规划
 
+有固定的模板和思维方式，背包算法等一些经典题目要格外注意
+https://mp.weixin.qq.com/s/erJPc8Xx9BBXY1ZiEXVvKg
 
+### No.70 爬楼梯
 
+假设你正在爬楼梯。需要 n 阶你才能到达楼顶。
+
+每次你可以爬 1 或 2 个台阶。你有多少种不同的方法可以爬到楼顶呢？
+
+注意：给定 n 是一个正整数。
+
+#### 一些基本思路
+
+最简单的动态规划题目，f(n) = f(n-1) + f(n-2)。正推或者反推，但要注意，反推时使用类似缓存的方法，避免重复计算
+
+```C++
+class Solution
+{
+public:
+    int climbStairs(int n)
+    {
+        int f0 = 1;
+        int f1 = 1;
+        if (n < 2)
+        {
+            return 1;
+        }
+        n -= 1;
+        while (n--)
+        {
+            int t = f1;
+            f1 = f1 + f0;
+            f0 = t;
+        }
+        return f1;
+    }
+};
+```
+```C++
+class Solution
+{
+
+public:
+    map<int, int> Cache;
+    int climbStairs(int n)
+    {
+        if (!Cache.count(n))
+        {
+            int result;
+            if (n < 2)
+            {
+                result = 1;
+            }
+            else
+            {
+                result = climbStairs(n - 1) + climbStairs(n - 2);
+            }
+            Cache[n] = result;
+        }
+        return Cache[n];
+    }
+}
+```
+
+### No.120 三角形最小路径和
+
+给定一个三角形，找出自顶向下的最小路径和。每一步只能移动到下一行中相邻的结点上。
+
+#### 基本思路
+从最后一层往上反推，注意这里有滚动数组的思想
+
+```C++
+class Solution
+{
+public:
+    int minimumTotal(vector<vector<int>> &triangle)
+    {
+        vector<int> result = triangle.back();
+        for (int layer = triangle.size() - 2; layer > -1; layer--)
+        {
+            for (int i = 0; i < triangle[layer].size(); i++)
+            {
+                if (result[i] < result[i + 1])
+                {
+                    result[i] = triangle[layer][i] + result[i];
+                }
+                else
+                {
+                    result[i] = triangle[layer][i] + result[i + 1];
+                }
+            }
+        }
+        return result[0];
+    }
+};
+```
+
+### 53 最大子序和
 
 
 
