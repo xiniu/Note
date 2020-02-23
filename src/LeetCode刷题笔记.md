@@ -1124,6 +1124,8 @@ public:
 
 #### 基本思路
 
+这里一开始理解上有偏差，我认为当前这个节点是障碍，则当前这个节点是可以到达的；但是下一个节点不能从这个节点过去，这样思考将问题复杂化了，一般这类题目，当前节点是障碍，则无法到达这个节点，依次处理问题将会简化。
+```C++
 class Solution
 {
 public:
@@ -1176,13 +1178,112 @@ public:
                     dp[i][j] = dp[i - 1][j] + dp[i][j - 1];
             }
         }
+        return dp[m - 1][n - 1]; // careful m - 1 & n -1
+    }
+};
+```
+
+### 64最小路径和
+和之前的三角形最小路径和类似。
+
+#### 基本思路
+最简单的动态规划题目，注意细心一点
+```C++
+class Solution
+{
+public:
+    int minPathSum(vector<vector<int>> &grid)
+    {
+        if (grid.empty() || grid[0].empty())
+        {
+            return -1;
+        }
+        int m = grid.size();
+        int n = grid[0].size();
+        vector<vector<int>> dp;
+        dp.resize(m);
+        for (int i = 0; i < m; i++)
+        {
+            dp[i].resize(n);
+        }
+        dp[0][0] = grid[0][0];
+        for (int j = 1; j < n; j++)
+        {
+            dp[0][j] = dp[0][j - 1] + grid[0][j];   // careful !!!
+        }
+        for (int i = 1; i < m; i++)
+        {
+            dp[i][0] = dp[i - 1][0] + grid[i][0];
+        }
+
+        for (int i = 1; i < m; i++)
+        {
+            for (int j = 1; j < n; j++)
+            {
+                dp[i][j] = min(dp[i - 1][j], dp[i][j - 1]) + grid[i][j];
+            }
+        }
         return dp[m - 1][n - 1];
     }
 };
+```
 
+### 221正方形面积
+在一个由 0 和 1 组成的二维矩阵内，找到只包含 1 的最大正方形，并返回其面积。
 
+#### 基本思路
+这道题的递推公式比较难找，记录下以每个坐标为右下角的正方形的最大边长，则
+dp[i][j] = min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]) + 1
+在纸上画一画确实是这样，但是自己思考确实有些难度
+```C++
+class Solution
+{
+public:
+    int maximalSquare(vector<vector<char>> &matrix)
+    {
+        if (matrix.empty() || matrix[0].empty())
+        {
+            return 0;
+        }
+        int m = matrix.size();
+        int n = matrix[0].size();
+        vector<vector<int>> dp;
+        dp.resize(m);
+        int maxLength = 0;
+        for (int i = 0; i < m; i++)
+        {
+            dp[i].resize(n);
+            dp[i][0] = matrix[i][0] - '0';
+            if (dp[i][0] > maxLength)
+                maxLength = dp[i][0];
+        }
+        for (int j = 0; j < n; j++)
+        {
+            dp[0][j] = matrix[0][j] - '0';
+            if (dp[0][j] > maxLength)
+                maxLength = dp[0][j];
+        }
 
-
+        for (int i = 1; i < m; i++)
+        {
+            for (int j = 1; j < n; j++)
+            {
+                if (matrix[i][j] - '0')
+                {
+                    dp[i][j] = min(dp[i - 1][j], min(dp[i][j - 1], dp[i - 1][j - 1])) + 1;
+                    if (dp[i][j] > maxLength)
+                        maxLength = dp[i][j];
+                }
+                else
+                {
+                    dp[i][j] = 0;
+                }
+            }
+        }
+        return maxLength * maxLength;
+    }
+};
+```
 
 
 
