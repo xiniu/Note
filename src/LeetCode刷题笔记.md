@@ -1399,8 +1399,33 @@ public:
     map<pair<int, int>, int> memo;
 };
 ```
+新的解法是：改变状态的定义，dp[i][j]重新定位为有i个鸡蛋，允许你仍j次情况下，你所能测试的最高楼层。于是，dp[k][m] = 1 + dp[k][m-1] + dp[k-1][m-1]。那么题目其实是再找一个m，使得dp[k][m]不小于N，很牛x
+```C++
+class Solution
+{
+public:
+    int superEggDrop(int K, int N)
+    {
+        vector<vector<int>> dp;
+        dp.resize(K + 1);
+        for (int i = 0; i < dp.size(); i++)
+        {
+            dp[i].resize(N + 1);
+        }
 
-
+        int m = 0;
+        while (dp[K][m] < N)
+        {
+            m++;
+            for (int k = 1; k <= K; k++)
+            {
+                dp[k][m] = 1 + dp[k - 1][m - 1] + dp[k][m - 1];
+            }
+        }
+        return m;
+    }
+};
+```
 
 
 
