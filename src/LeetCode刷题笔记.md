@@ -1427,6 +1427,78 @@ public:
 };
 ```
 
+### [0321] 词语接龙
+
+- 基本想法： 就是DFS，但是一开始对于循环回路等想的太复杂了
+```C++
+const int NODE_SIZE = 52;
+class Solution0321
+{
+public:
+	int getLongestNum(vector<string>& strVec)
+	{
+		if (strVec.empty()) {
+			return 0;
+		}
+		memset(graph, 0, sizeof(int) * NODE_SIZE * NODE_SIZE);
+		memset(visit, 0, sizeof(int) * NODE_SIZE);
+		for (auto& str : strVec) {
+			graph[str.front() - 'A'][str.back() - 'A'] += 1;
+		}
+		for (int i = 0; i < NODE_SIZE; i++) {
+			if (visit[i] == 0) {
+				(void)dfs(i);
+			}
+		}
+		int result = 0;
+		for (int i = 0; i < NODE_SIZE; i++) {
+			result = (result < visit[i]) ? visit[i] : result;
+		}
+		return result;
+
+	}
+	int dfs(int begin) {
+		int max = 0;
+		for (int i = 0; i < NODE_SIZE; i++) {
+			if (graph[begin][i]) {  // have edge from begin-->i
+				int temp = 0;
+				if (visit[i] != 0) {
+					temp = visit[i] + 1;
+				}
+				else {
+					graph[begin][i]--;	
+					temp = dfs(i) + 1;
+					graph[begin][i]++;
+				}
+				if (max < temp) {
+					max = temp;
+				}
+			}
+		}
+		max;
+		visit[begin] = max;
+		return max;
+	}
+
+	int graph[NODE_SIZE][NODE_SIZE];
+	int visit[NODE_SIZE]; // the longest from position i
+	
+};
+int main()
+{
+	vector<string> strVec{ "AC", "CD","DE","EA","AD","DA" };
+	for (int i = 6; i < 100; i++) {
+		strVec.push_back(strVec[i - 6]);
+	}
+	auto start = chrono::steady_clock::now();
+	cout << Solution0321().getLongestNum(strVec) << endl;
+	auto end = chrono::steady_clock::now();
+	auto diff = end - start;
+	cout << chrono::duration <double, milli>(diff).count() << " ms" << endl;
+	return 0;
+}
+
+```
 
 
 
