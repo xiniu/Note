@@ -1567,3 +1567,250 @@ public:
 };
 ```
 
+###  [207] 课程表 I
+我先做的II，所以这一题很简单
+```C++
+const int STATE_VISITED = 1;
+const int STATE_BLANK = 0;
+const int STATE_VISITING = -1;
+class Solution207 {
+public:
+	bool canFinish(int numCourses, vector<vector<int>>& prerequisites) {
+		state.resize(numCourses);
+		graph.resize(numCourses);
+		for (int i = 0; i < numCourses; i++) {
+			graph[i].resize(numCourses);
+		}
+		for (auto& pair : prerequisites) {
+			graph[pair[0]][pair[1]] = 1;
+		}
+
+		for (int i = 0; i < numCourses; i++) {
+			if (state[i] != STATE_VISITED && !dfs(i))
+				return false;
+		}
+		return true;
+	}
+	bool dfs(int begin) {
+		if (state[begin] == STATE_VISITING) {
+			return false; // loop occure here!
+		}
+
+		state[begin] = STATE_VISITING;
+		for (int i = 0; i < state.size(); i++) {
+			if (graph[begin][i] && state[i] != STATE_VISITED && !dfs(i)) {
+				return false;
+			}
+		}
+		state[begin] = STATE_VISITED;
+		result.push_back(begin);
+		return true;
+
+	}
+	vector<int> result;
+	vector<int> state;
+	vector<vector<int>> graph;
+};
+```
+###  [329] 矩阵中的最长递增路径
+给定一个整数矩阵，找出最长递增路径的长度。
+对于每个单元格，你可以往上，下，左，右四个方向移动。 你不能在对角线方向上移动或移动到边界外（即不允许环绕）.因为粗心，数组越界导致我排查很久
+```C++
+class Solution
+{
+public:
+    int longestIncreasingPath(vector<vector<int>> &matrix)
+    {
+        if (matrix.empty())
+        {
+            return 0;
+        }
+        result = 0;
+        state.resize(matrix.size());
+        for (int i = 0; i < matrix.size(); i++)
+        {
+            state[i].resize(matrix[0].size());
+        }
+
+        for (int i = 0; i < state.size(); i++)
+        {
+            for (int j = 0; j < state[0].size(); j++)
+            {
+                if (!state[i][j])
+                    dfs(i, j, matrix);
+            }
+        }
+
+        return result;
+    }
+    int dfs(int begini, int beginj, vector<vector<int>> &matrix)
+    {
+        if (begini < 0 || begini >= matrix.size() || beginj < 0 || beginj >= matrix[0].size())
+        {
+            return 0;
+        }
+        int temp = 0;
+
+        if (begini > 0 && matrix[begini - 1][beginj] > matrix[begini][beginj])
+        {
+            if (state[begini - 1][beginj])
+            {
+                temp = max(temp, state[begini - 1][beginj]);
+            }
+            else
+            {
+                temp = max(temp, dfs(begini - 1, beginj, matrix));
+            }
+        }
+
+        if (begini < matrix.size() - 1 && matrix[begini + 1][beginj] > matrix[begini][beginj])
+        {
+            if (state[begini + 1][beginj])
+            {
+                temp = max(temp, state[begini + 1][beginj]);
+            }
+            else
+            {
+                temp = max(temp, dfs(begini + 1, beginj, matrix));
+            }
+        }
+
+        if (beginj > 0 && matrix[begini][beginj - 1] > matrix[begini][beginj])
+        {
+            if (state[begini][beginj - 1])
+            {
+                temp = max(temp, state[begini][beginj - 1]);
+            }
+            else
+            {
+                temp = max(temp, dfs(begini, beginj - 1, matrix));
+            }
+        }
+
+        if (beginj < matrix[0].size() - 1 && matrix[begini][beginj + 1] > matrix[begini][beginj])
+        {
+            if (state[begini][beginj + 1])
+            {
+                temp = max(temp, state[begini][beginj + 1]);
+            }
+            else
+            {
+                temp = max(temp, dfs(begini, beginj + 1, matrix));
+            }
+        }
+        result = result < (temp + 1) ? (temp + 1) : result;
+        state.at(begini).at(beginj) = temp + 1;
+        return temp + 1;
+    }
+    int result;
+    vector<vector<int>> state;
+};
+```
+## 二叉树
+
+### [102] 二叉树的层次遍历
+给定一个二叉树，返回其按层次遍历的节点值。 （即逐层地，从左到右访问所有节点）。
+```C++
+class Solution102 {
+public:
+	vector<vector<int>> levelOrder(TreeNode* root) {
+		if (root == nullptr) {
+			return result;
+		}
+		nextLayer.push(root);
+		bfs(root);
+		return result;
+	}
+	void bfs(TreeNode* root) {
+		while (true) {
+			if (curLayer.empty() && nextLayer.empty()) {
+				break;
+			}
+			else if (curLayer.empty()){
+				curLayer = nextLayer;
+				nextLayer = queue<TreeNode*>{};
+				result.push_back(vector<int>{});
+			}
+
+			TreeNode* Item = curLayer.front();
+			curLayer.pop();
+			result.back().push_back(Item->val);
+			if (Item->left){
+				nextLayer.push(Item->left);
+			}
+			if (Item->right) {
+				nextLayer.push(Item->right);
+			}
+		}
+	}
+	queue<TreeNode*> curLayer;
+	queue<TreeNode*> nextLayer;
+	vector<vector<int>> result;
+};
+```
+
+### [103] 二叉树的锯齿形层次遍历
+```C++
+class Solution
+{
+public:
+    vector<vector<int>> zigzagLevelOrder(TreeNode *root)
+    {
+        if (root == nullptr)
+        {
+            return result;
+        }
+        nextLayer.push(root);
+        flag = 0;
+        bfs(root);
+        return result;
+    }
+    void bfs(TreeNode *root)
+    {
+        while (true)
+        {
+            if (curLayer.empty() && nextLayer.empty())
+            {
+                break;
+            }
+            else if (curLayer.empty())
+            {
+                curLayer = nextLayer;
+                nextLayer = stack<TreeNode *>{};
+                result.push_back(vector<int>{});
+                flag++;
+            }
+
+            TreeNode *Item = curLayer.top();
+            curLayer.pop();
+            result.back().push_back(Item->val);
+            if (flag % 2 == 1)
+            {
+                if (Item->left)
+                {
+                    nextLayer.push(Item->left);
+                }
+                if (Item->right)
+                {
+                    nextLayer.push(Item->right);
+                }
+            }
+            else
+            {
+                if (Item->right)
+                {
+                    nextLayer.push(Item->right);
+                }
+                if (Item->left)
+                {
+                    nextLayer.push(Item->left);
+                }
+            }
+        }
+    }
+    stack<TreeNode *> curLayer;
+    stack<TreeNode *> nextLayer;
+    vector<vector<int>> result;
+    int flag;
+};
+```
