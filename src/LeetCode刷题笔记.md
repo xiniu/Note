@@ -1706,6 +1706,317 @@ public:
     vector<vector<int>> state;
 };
 ```
+
+### 1203 项目管理
+- 基本思路： 组内各个元素排序，然后组之间也要排序。另外有些项目没有组，只能分配一个唯一的组。
+- 代码:构建图，元素之间的图和组之间图。但是内存使用越界了
+```C++
+class Solution
+{
+public:
+    vector<int> sortItems(int n, int m, vector<int> &group, vector<vector<int>> &beforeItems)
+    {
+        if (m == 0 || n == 0 || group.size() != n || beforeItems.size() != n)
+        {
+            return vector<int>{};
+        }
+
+        // Inition matrix
+        graphForMembers.resize(n);
+        for (int i = 0; i < n; i++)
+        {
+            graphForMembers[i].resize(n);
+        }
+
+        validGroupEnd = m;
+        for (int i = 0; i < n; i++)
+        {
+            if (group[i] == -1)
+            {
+                group[i] = validGroupEnd++; // 对于没有组的分配一个唯一的组号，方便处理
+            }
+        }
+
+        groupMembers.resize(validGroupEnd);
+        graphForGroup.resize(validGroupEnd);
+        for (int i = 0; i < validGroupEnd; i++)
+        {
+            graphForGroup[i].resize(validGroupEnd);
+        }
+
+        for (int i = 0; i < n; i++)
+        {
+            int grp = group[i];
+            groupMembers[grp].push_back(i);
+            vector<int> &befor = beforeItems[i];
+            if (!befor.empty())
+            {
+                for (int b = 0; b < befor.size(); b++)
+                {
+                    graphForMembers[i][befor[b]] = 1;
+                    if (grp != group[befor[b]])
+                    {
+                        graphForGroup[grp][group[befor[b]]] = 1;
+                    }
+                }
+            }
+        }
+
+        // 先排组内顺序
+        vector<queue<int>> seqForGroup;
+        seqForGroup.resize(validGroupEnd);
+        for (int i = 0; i < validGroupEnd; i++)
+        {
+            queue<int> seq;
+            vector<int> visit;
+            if (!groupMembers[i].empty())
+            {
+                visit.resize(groupMembers[i].size());
+                for (int j = 0; j < groupMembers[i].size(); j++)
+                {
+                    if (visit[j] != 1 && !dfsForOneGroup(i, j, visit, seq))
+                    {
+                        return vector<int>{};
+                    }
+                }
+            }
+            seqForGroup[i] = seq;
+        }
+
+        // 再组间排序
+        queue<int> seqBetweenGroup;
+        vector<int> visit;
+        visit.resize(validGroupEnd);
+        for (int i = 0; i < validGroupEnd; i++)
+        {
+            if (visit[i] != 1 && !dfsBetweenGroup(i, visit, seqBetweenGroup))
+            {
+                return vector<int>{};
+            }
+        }
+
+        vector<int> result;
+        while (!seqBetweenGroup.empty())
+        {
+            int i = seqBetweenGroup.front();
+            seqBetweenGroup.pop();
+            if (!groupMembers[i].empty())
+            {
+                while (!seqForGroup[i].empty())
+                {
+                    result.push_back(groupMembers[i][seqForGroup[i].front()]);
+                    seqForGroup[i].pop();
+                }
+            }
+        }
+        return result;
+    }
+    bool dfsForOneGroup(int groupNo, int pos, vector<int> &visit, queue<int> &seq)
+    {
+        if (visit[pos] == -1) // -1代表正在访问
+        {
+            return false;
+        }
+        visit[pos] = -1;
+        int item = groupMembers[groupNo][pos];
+        for (int i = 0; i < graphForMembers[item].size(); i++)
+        {
+            if (graphForMembers[item][i])
+            {
+                for (int j = 0; j < groupMembers[groupNo].size(); j++)
+                {
+                    if ((groupMembers[groupNo][j]) == i && visit[j] != 1 && !dfsForOneGroup(groupNo, j, visit, seq))
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+        visit[pos] = 1;
+        seq.push(pos);
+        return true;
+    }
+
+    bool dfsBetweenGroup(int pos, vector<int> &visit, queue<int> &seq)
+    {
+        if (visit[pos] == -1) // -1代表正在访问
+        {
+            return false;
+        }
+        visit[pos] = -1;
+        for (int i = 0; i < validGroupEnd; i++)
+        {
+            if (graphForGroup[pos][i] && visit[i] != 1 && !dfsBetweenGroup(i, visit, seq))
+            {
+                return false;
+            }
+        }
+        visit[pos] = 1;
+        seq.push(pos);
+        return true;
+    }
+    vector<vector<int>> groupMembers;
+    vector<vector<int>> graphForMembers;
+    vector<vector<int>> graphForGroup;
+    int validGroupEnd;
+};
+```
+基于代码分析，估计是表示图的二位数组太大导致越界。通过set保存图,，但是通过了10个用例，大数超时
+```C++
+namespace std
+{
+template <>
+struct hash<std::pair<int, int>>
+{
+    inline size_t operator()(const std::pair<int, int> &v) const
+    {
+        std::hash<int> int_hasher;
+        return int_hasher(v.first) ^ int_hasher(v.second);
+    }
+};
+} // namespace std
+class Solution
+{
+public:
+    vector<int> sortItems(int n, int m, vector<int> &group, vector<vector<int>> &beforeItems)
+    {
+        if (m == 0 || n == 0 || group.size() != n || beforeItems.size() != n)
+        {
+            return vector<int>{};
+        }
+        itemNum = n;
+
+        validGroupEnd = m;
+        for (int i = 0; i < n; i++)
+        {
+            if (group[i] == -1)
+            {
+                group[i] = validGroupEnd++; // 对于没有组的分配一个唯一的组号，方便处理
+            }
+        }
+
+        groupMembers.resize(validGroupEnd);
+
+        for (int i = 0; i < n; i++)
+        {
+            int grp = group[i];
+            groupMembers[grp].push_back(i);
+            vector<int> &befor = beforeItems[i];
+            if (!befor.empty())
+            {
+                for (int b = 0; b < befor.size(); b++)
+                {
+                    graphForMembers.insert(pair(i, befor[b]));
+                    if (grp != group[befor[b]])
+                    {
+                        graphForGroup.insert(pair(grp, group[befor[b]]));
+                    }
+                }
+            }
+        }
+
+        // 先排组内顺序
+        vector<queue<int>> seqForGroup;
+        seqForGroup.resize(validGroupEnd);
+        for (int i = 0; i < validGroupEnd; i++)
+        {
+            queue<int> seq;
+            vector<int> visit;
+            if (!groupMembers[i].empty())
+            {
+                visit.resize(groupMembers[i].size());
+                for (int j = 0; j < groupMembers[i].size(); j++)
+                {
+                    if (visit[j] != 1 && !dfsForOneGroup(i, j, visit, seq))
+                    {
+                        return vector<int>{};
+                    }
+                }
+            }
+            seqForGroup[i] = seq;
+        }
+
+        // 再组间排序
+        queue<int> seqBetweenGroup;
+        vector<int> visit;
+        visit.resize(validGroupEnd);
+        for (int i = 0; i < validGroupEnd; i++)
+        {
+            if (visit[i] != 1 && !dfsBetweenGroup(i, visit, seqBetweenGroup))
+            {
+                return vector<int>{};
+            }
+        }
+
+        vector<int> result;
+        while (!seqBetweenGroup.empty())
+        {
+            int i = seqBetweenGroup.front();
+            seqBetweenGroup.pop();
+            if (!groupMembers[i].empty())
+            {
+                while (!seqForGroup[i].empty())
+                {
+                    result.push_back(groupMembers[i][seqForGroup[i].front()]);
+                    seqForGroup[i].pop();
+                }
+            }
+        }
+        return result;
+    }
+    bool dfsForOneGroup(int groupNo, int pos, vector<int> &visit, queue<int> &seq)
+    {
+        if (visit[pos] == -1) // -1代表正在访问
+        {
+            return false;
+        }
+        visit[pos] = -1;
+        int item = groupMembers[groupNo][pos];
+        for (int i = 0; i < itemNum; i++)
+        {
+            if (graphForMembers.count(pair(item, i)))
+            {
+                for (int j = 0; j < groupMembers[groupNo].size(); j++)
+                {
+                    if ((groupMembers[groupNo][j]) == i && visit[j] != 1 && !dfsForOneGroup(groupNo, j, visit, seq))
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+        visit[pos] = 1;
+        seq.push(pos);
+        return true;
+    }
+
+    bool dfsBetweenGroup(int pos, vector<int> &visit, queue<int> &seq)
+    {
+        if (visit[pos] == -1) // -1代表正在访问
+        {
+            return false;
+        }
+        visit[pos] = -1;
+        for (int i = 0; i < validGroupEnd; i++)
+        {
+            if (graphForGroup.count(pair(pos, i)) && visit[i] != 1 && !dfsBetweenGroup(i, visit, seq))
+            {
+                return false;
+            }
+        }
+        visit[pos] = 1;
+        seq.push(pos);
+        return true;
+    }
+    vector<vector<int>> groupMembers;
+    //vector<vector<int> > graphForMembers;
+    unordered_set<pair<int, int>> graphForMembers;
+    //vector<vector<int> > graphForGroup;
+    unordered_set<pair<int, int>> graphForGroup;
+    int validGroupEnd;
+    int itemNum;
+};
+```
 ## 二叉树
 
 ### [102] 二叉树的层次遍历
