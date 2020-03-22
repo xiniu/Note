@@ -2125,3 +2125,85 @@ public:
     int flag;
 };
 ```
+
+## 贪心算法
+
+### [55] 跳跃游戏
+
+- 基本思路：维持一个变量，遍历I，当前所能跳到的最远处，然后不断更新，如果这个最远处超过终点，则可以；但是如果遍历发现，i比fast大，则意味这终点不可达，连位置i都到达不了
+
+```C++
+class Solution55 {
+public:
+	bool canJump(vector<int>& nums) {
+		int fast = 0 +  nums[0];
+		int i = 1;
+		while (i < nums.size() - 1 && fast < nums.size() - 1) {
+			if (i > fast) {
+				return false;
+			} else{
+				fast = (fast < i + nums[i]) ? (i + nums[i]) : fast;
+			}
+			i++;
+		}
+		return true;
+
+	}
+};
+
+```
+
+### ### [45] 跳跃游戏
+
+- 还是对问题考虑不够仔细，在上一题的基础上要想清楚，啥时候step需要++。当i到哪个位置，需要step++?
+- 有其他的思路，但是超时。想法时，如果要一部跳到最后target，i最小从哪里跳。以此循环直到target=0
+
+```
+class Solution
+{
+public:
+    int jump1(vector<int> &nums)
+    {
+
+        int target = nums.size() - 1;
+        int step = 0;
+        vector<int> temp = nums;
+        for (int i = 0; i < temp.size(); i++)
+        {
+            temp[i] = i + temp[i];
+        }
+        while (target > 0)
+        {
+            for (int i = 0; i < target; i++)
+            {
+                if (temp[i] >= target)
+                {
+                    target = i;
+                    step++;
+                    break;
+                }
+            }
+        }
+        return step;
+    }
+
+    int jump(vector<int> &nums)
+    {
+
+        int fast = 0;
+        int index = 0;
+
+        int step = 0;
+        for (int i = 0; i < nums.size() - 1; i++)
+        {
+            fast = max(fast, i + nums[i]);
+            if (i == index)
+            {
+                step++;
+                index = fast;
+            }
+        }
+        return step;
+    }
+};
+```
