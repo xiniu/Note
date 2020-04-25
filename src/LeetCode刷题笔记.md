@@ -2153,7 +2153,7 @@ public:
 
 ```
 
-### ### [45] 跳跃游戏
+###  [45] 跳跃游戏
 
 - 还是对问题考虑不够仔细，在上一题的基础上要想清楚，啥时候step需要++。当i到哪个位置，需要step++?
 - 有其他的思路，但是超时。想法时，如果要一部跳到最后target，i最小从哪里跳。以此循环直到target=0
@@ -2204,6 +2204,129 @@ public:
             }
         }
         return step;
+    }
+};
+```
+
+## 生成排列
+
+这其实时回溯的一种，注意两点：什么时候找到一个满足条件的结果；每一轮遍历的时候，注意哪些能选择，哪些不能选择
+
+### 46 全排列
+
+给定一个 没有重复 数字的序列，返回其所有可能的全排列。
+
+#### 基本思路：
+
+- 当已选择列表的个数达到时认为找到一个解，需要回
+- 每一轮时，从可以选择的值选择一个，然后递归调用；调用完毕后将选择回退掉
+```C++
+class Solution
+{
+public:
+    vector<vector<int>> permute(vector<int> &nums)
+    {
+        set<int> already;
+        vector<vector<int>> result;
+        vector<int> aResult;
+        getPermute(already, result, aResult, nums);
+        return result;
+    }
+    void getPermute(set<int> &already, vector<vector<int>> &result, vector<int> &aResult, vector<int> &nums)
+    {
+        int len = nums.size();
+        if (aResult.size() == len)
+        {
+            result.push_back(aResult);
+            return;
+        }
+        for (int i = 0; i < len; i++)
+        {
+            int v = nums[i];
+            if (already.count(v) == 0)
+            {
+                already.insert(v);
+                aResult.push_back(v);
+                getPermute(already, result, aResult, nums);
+                aResult.pop_back();
+                already.erase(already.find(v));
+            }
+        }
+    }
+};
+```
+使用stl库的解法,效率更快
+```
+class Solution
+{
+public:
+    vector<vector<int>> permute(vector<int> &nums)
+    {
+        vector<vector<int>> result;
+        sort(nums.begin(), nums.end());
+        do
+        {
+            result.push_back(nums);
+        } while (next_permutation(nums.begin(), nums.end()));
+        return result;
+    }
+}
+```
+
+### [47] 全排列 II
+
+给定一个可包含重复数字的序列，返回所有不重复的全排列。
+
+#### 基本思路
+
+- 在上题的基础上，判断每个值是否可以选，可以创建下标的set，只要这个下标没有选择过，就可以继续使用
+- 对于去重，一开始没有想到，选择了最土的方法，构建了一个所有解的set，每次当判断有新的解出现时先判断是否已经添加过这个解了，效率较差；后面看书，基本思路是：对于每轮递归，例如现在考虑要填写的是第2位的数，我填第2位数字时，每次取一个可选的数时，如果这个数字已经在2这个位置考虑过，就不用再用他递归依一次了
+- 尝试使用stl的next_permutation，效率还是最快的
+```C++
+class Solution
+{
+public:
+    vector<vector<int>> permuteUnique(vector<int> &nums)
+    {
+        sort(nums.begin(), nums.end());
+        vector<vector<int>> result;
+        do
+        {
+            result.push_back(nums);
+
+        } while (next_permutation(nums.begin(), nums.end()));
+        return result;
+    }
+    vector<vector<int>> permuteUnique2(vector<int> &nums)
+    {
+        set<int> already;
+        vector<vector<int>> result;
+        vector<int> aResult;
+        getPermute(already, result, aResult, nums);
+        return result;
+    }
+    void getPermute(set<int> &already, vector<vector<int>> &result, vector<int> &aResult, vector<int> &nums)
+    {
+        int len = nums.size();
+        if (aResult.size() == len)
+        {
+            result.push_back(aResult);
+            return;
+        }
+        set<int> usedValue;
+        for (int i = 0; i < len; i++)
+        {
+            int v = nums[i];
+            if (already.count(i) == 0 && usedValue.count(v) == 0)
+            {
+                already.insert(i);
+                aResult.push_back(v);
+                usedValue.insert(v);
+                getPermute(already, result, aResult, nums);
+                aResult.pop_back();
+                already.erase(already.find(i));
+            }
+        }
     }
 };
 ```
