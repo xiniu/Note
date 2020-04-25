@@ -441,6 +441,37 @@ public:
 };
 ```
 
+### [645] 错误的集合
+ 集合 S 包含从1到 n
+ 的整数。不幸的是，因为数据错误，导致集合里面某一个元素复制了成了集合里面的另外一个元素的值，导致集合丢失了一个整数并且有一个元素重复。
+ 给定一个数组 nums 代表了集合 S 发生错误后的结果。你的任务是首先寻找到重复出现的整数，再找到丢失的整数，将它们以数组的形式返回。
+ ```C++
+ class Solution
+{
+public:
+    vector<int> findErrorNums(vector<int> &nums)
+    {
+        int repeat = -1;
+        int miss = -1;
+        set<int> used;
+        int sumShould = (1 + nums.size()) * nums.size() / 2;
+        for (int i = 0; i < nums.size(); i++)
+        {
+            if (used.count(nums[i]) != 0)
+            {
+                repeat = nums[i];
+            }
+            else
+            {
+                sumShould -= nums[i];
+                used.insert(nums[i]);
+            }
+        }
+        miss = sumShould;
+        return vector{repeat, miss};
+    }
+};
+ ```
 ## 二分法
 
 针对二分法，要转变原先的思维，将二分法转向夹逼的思想。每次去除一半的可能空间。要深刻理解这句话，明确解空间是什么，取中位数和排除的逻辑，注意不要进入死循环。建议详细参考公众号以下文档：https://mp.weixin.qq.com/s/gjXOjOt32d8oAbb40tN5_Q
@@ -2208,6 +2239,55 @@ public:
 };
 ```
 
+### 区间排序类问题
+https://mp.weixin.qq.com/s/NpEHIpemv4b74BUTOWekQw
+
+#### [435] 无重叠区间
+给定一个区间的集合，找到需要移除区间的最小数量，使剩余区间互不重叠。
+
+```C++
+struct cmp  // why struct? 
+{
+    bool operator()(vector<int> &v1, vector<int> &v2)
+    {
+        return v1[1] > v2[1];
+    }
+};
+class Solution
+{
+public:
+    int eraseOverlapIntervals(vector<vector<int>> &intervals)
+    {
+        if (intervals.empty())
+        {
+            return 0;
+        }
+
+        priority_queue<vector<int>, vector<vector<int>>, cmp> q;  // use quque
+        for (auto &v : intervals)
+        {
+            q.push(v);
+        }
+        int result = 0;
+        vector<int> cur = q.top();
+        q.pop();
+        while (!q.empty())
+        {
+            vector<int> aVec = q.top();
+            q.pop();
+            if (aVec.front() < cur.back())
+            {
+                result++;
+            }
+            else
+            {
+                cur = aVec;
+            }
+        }
+        return result;
+    }
+};
+```
 ## 生成排列
 
 这其实时回溯的一种，注意两点：什么时候找到一个满足条件的结果；每一轮遍历的时候，注意哪些能选择，哪些不能选择
