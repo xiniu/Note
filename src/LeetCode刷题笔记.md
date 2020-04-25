@@ -2288,6 +2288,43 @@ public:
     }
 };
 ```
+不适用优先级队列也可以
+```C++
+struct cmp1
+{
+    bool operator()(vector<int> &v1, vector<int> &v2)
+    {
+        return v1[1] < v2[1];
+    }
+};
+class Solution
+{
+public:
+    int eraseOverlapIntervals(vector<vector<int>> &intervals)
+    {
+        if (intervals.empty())
+        {
+            return 0;
+        }
+        int result = 0;
+        sort(intervals.begin(), intervals.end(), cmp1());
+        int curend = intervals[0][1];
+        for (int i = 1; i < intervals.size(); i++)
+        {
+
+            if (intervals[i][0] < curend)
+            {
+                result++;
+            }
+            else
+            {
+                curend = intervals[i][1];
+            }
+        }
+        return result;
+    }
+};
+```
 ## 生成排列
 
 这其实时回溯的一种，注意两点：什么时候找到一个满足条件的结果；每一轮遍历的时候，注意哪些能选择，哪些不能选择
