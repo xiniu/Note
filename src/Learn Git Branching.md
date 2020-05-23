@@ -1,5 +1,7 @@
 # Learn Git Branching
 
+https://learngitbranching.js.org/?locale=zh_CN
+
 ## Git Commit
 
 Git仓库中提交的记录保存的是所有文件的快照；但是实际内部实现时并不会盲目的复制整个目录，他保存的是差异。Git会保存提交的历史记录。
@@ -234,4 +236,12 @@ git pull; git push
 ```
 
 ## 远程服务拒绝 remote rejected
+
+在一个大的合作团队中，master可能被锁定了，需要 pull request的流程来合并修改。应该按照流程新建一个分支并推送这个分支并申请pull request。但是你直接提交给了master，导致你现在被卡住且无法推送。
+你需要：新建分支并推送服务器，然后reset master和远程服务器移植，否则下次pull时如果你和别人提交冲突时会有问题
+```
+git reset --hard o/master
+git checkout -b feature C2 # 可以跟第二个参数
+git push origin feature
+```
 
