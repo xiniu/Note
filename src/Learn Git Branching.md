@@ -73,9 +73,53 @@ git checkout HEAD^
 
 ## 撤销变更
 
+主要有两种方法来撤销变更，一种是git reset，还有就是git revert
+- git reset通过把分支记录回退几个提交提交记录来实现撤销改动---“改动历史”；但是这种方式对使用远程分支是无效的
+- git revert，撤销修改并可以分享给他们，实际会生成提交记录
+```
+git reset HEAD^
+git checkout pushed
+git revet C2
+```
+
+## 整理提交记录
+
+### Git cherry-pick
+
+把一些提交复制到当前所在分支。`git cherry-pick C2 C4`将C2 C4提交抓过来放在当前分支下
+```
+git cherry-pick C3 C4 C7
+```
+### 交互式的rebase
+
+当前知道提交值的哈希值时git cherry-pick非常好用，但是如果不知道呢？ 可以利用交互式的rebase---`git rebase -i ovherHeae`
+
+### 本地栈式提交
+
+如果我们只想提交解决问题的哪一个提交记录，我们可以使用`git rebase -i`或者`git cherry-pick`
+```
+git checkout master
+git cherry-pick C4
+```
+
+### 提交的技巧
+
+```
+git rebase -i
+git commit --amend
+git rebase -i
+git branch -f master HEAD
+```
 
 
+### 提交的技巧2
 
+```
+git rebase -i
+git commit --amend
+git rebase -i
+git branch -f master HEAD
+```
 
 
 
