@@ -23,7 +23,6 @@ git checkout -b bugFix
 ```
 
 ## 分支与合并
-
 如何将两个分支合并到一起。第一种方法就是 git merge。在git中合并两个分支时会产生一个特殊的提交记录，他有两个父节点，翻译成自然语言相当于：将两个父节点本身以及他们所有的祖先都包含进来
 
 ```
@@ -325,15 +324,22 @@ git checkout foo
 git merge master
 ```
 
-## 古怪的sorce
+## 古怪的source
 
-有两种关于sorce的用法比较诡异，你可以在使用git push或者给i他fetch时不指定任何source，只保留毛猴和destina
+有两种关于source的用法比较诡异，你可以在使用git push或者给i他fetch时不指定任何source，只保留毛猴和destina
 
 - 如果push 空到远程仓库会删除远程仓库的分支
 `git push origin :foo # 会删除远程仓库的foo分支`
 - 如果fetch 空到本地，会在本地创建新的分支
 `git fetch origin :bar # 本地创建bar分支`
 
+## git pull参数
 
-
+`git pull origin foo `等价于`git fetch origin foo; git merge o/foo`
+`git pull origin bar~1:bugFix`等价于`git fetch origin bar~1:bugFix;git merge bugFix`
+git pull实际就是fetch + merge（**到当前检出的位置**）的缩写，它唯一关注的是提交最终合并到哪里
+```
+git pull origin bar:foo
+git pull origin master:side
+```
 
