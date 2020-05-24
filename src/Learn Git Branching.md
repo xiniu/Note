@@ -245,3 +245,95 @@ git checkout -b feature C2 # 可以跟第二个参数
 git push origin feature
 ```
 
+## 合并特性分支
+
+将特性分支集成到master并推送到远程分支:`git rebase A B`就是将B复制到A,你可以理解为B是可选参数(只是接，但不会改变A所指位置，但是会改变B)
+
+```
+git fetch
+git rebase o/master side1
+git rebase side1 side2
+git rebase side2 side3
+git rebase side3 master
+```
+
+## 为什么不用merge呢
+
+rebase的优点：使你的提交树变得干净
+rebase的缺点：修改了提交树的历史，例如C1可以被rebase到C之后，看起来时C1在C3之后但实际在C3之前
+```
+git checkout matser
+git pull --rebase
+git merge side1
+git merge side2
+git merge side3
+git push
+```
+
+## 远程跟踪分支
+
+似乎是：master和o/master是关联的，pull时提交记录会先下载到o/master然后再合并到本地master；puhs时将master推送到远程的master分支同时会更显远程分支o/master
+
+这种设定就是分支的 remote tracking属性决定；克隆仓库时git自动帮你设定了该属性。但是我们也可以自己指定这种跟踪关系，可以让任意分支跟踪o/master，最终该分支会想master分支一样得到隐含的push目的以及merge目的，这意味这你可以再分支totallyNotMaster上执行push并将工作推送到远程master分支，但这种情况master不会被更新了
+
+两种方法：
+- git checkout -b totallyNotMaster o/master
+- git branch -u o/master foo（如果当前就再foo上可以省略foo）
+```
+git checkout -b side o/master
+git commit
+git pull --rebase
+git push
+```
+
+## git push参数
+ git push <remote> <place> 切换到本地的place分支获取所有提交并到远程库remote中master分支，如果不带参数，push实际时将HEAD跟踪的分支提交
+  
+ ```
+ git push origin master
+ git push origin side
+ 
+ ```
+ 
+ ## <place>参数详解
+  
+  在上面的来自中，当place参数指定为master时，他同时指定了提交记录的来源和去向；但是当来源和去向不同呢，例如将本地的foo分支推送到远程的bar分支
+`git push prigin <source>:<destination>  `。例如：
+```
+git push origin foo^:master # 记得push会更显本地的o/master
+```
+当要推送的目的分支不逊在时，git会在远程仓库根据你提供的名称帮你创建这个分支
+```
+git push origin master:newBranch # 执行完后会更新o/newBranch
+```
+
+## git fetch参数
+
+git fetch的参数和git push完全相似，只是方向相反
+
+- git到远程仓库foo分支获取本地不存在的提交放到本地o/foo上。会自己更新o/foo;但是没有更新本地的foo：
+git fetch origin foo
+- 使用source:destination，可以直接将代码更新到本地分支，但是这个分支不能时当前检出的;如果当前分支不存在，会创建出分支来
+git fetch origin foo~1:bar
+- 如果git fetch没有参数，他会下载所有提交记录到各个远程分
+git fetch
+
+```
+git fecth origin foo:master
+git fetch origin master^:foo
+git checkout foo
+git merge master
+```
+
+## 古怪的sorce
+
+有两种关于sorce的用法比较诡异，你可以在使用git push或者给i他fetch时不指定任何source，只保留毛猴和destina
+
+- 如果push 空到远程仓库会删除远程仓库的分支
+`git push origin :foo # 会删除远程仓库的foo分支`
+- 如果fetch 空到本地，会在本地创建新的分支
+`git fetch origin :bar # 本地创建bar分支`
+
+
+
+
