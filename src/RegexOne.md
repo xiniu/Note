@@ -124,4 +124,31 @@ Buy more (milk|bread|juice)
 
 ^(\w+)://([\w\.-]+)(:(\d+))?
 
-https://regex101.com/quiz/1 这个网站也刷一下
+# regex101
+https://regex101.com/quiz/1 
+
+## 1 Check if a string contains the word word in it
+
+`/\bword\b/i`  注意这个网站需要指明大小写敏感i
+
+## 2 Use substitution to replace every occurrence of the word i with the word I
+
+匹配方法：`/(?:\bi\b|i')/ig`
+匹配加替换：`/s/(?:\bi\b|i)/I/ig`
+
+## 3 With regex you can count the number of matches. Can you make it return the number of uppercase consonants (B,C,D,F,..,X,Y,Z) in a given string
+
+`/[B-DF-HJ-NP-TV-Z]/g`
+
+##  4 Count the number of integers in a given string. Integers are, for example: 1, 2, 65, 2579, etc.
+
+`/(?:\d+)/g`
+
+## 5 Find all occurrences of 4 or more whitespace characters in a row throughout the string.
+
+自己的答案貌似不太好`/(?: {4,}+| *\t+[ \t]*)/g`
+
+
+
+
+
