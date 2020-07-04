@@ -106,3 +106,8 @@ https://www.ibm.com/developerworks/cn/linux/l-bash-parameters.html
 统计当前文件中大小最大的10个文件或者文件夹（s代表的总计，也就是说如果是一个文件夹，只显示总的大小）。对于du要好好学习。
 `du filename`显示一个文件的大小，`du dir`会递归显示dir下每个子文件夹大小，`du -s dir`只显示总大小
 
+- `> file.txt`
+创建一个空文件
+
+- `ps aux | sort -nk +4 | tail`
+流出10个最耗内存的进程
