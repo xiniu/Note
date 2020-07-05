@@ -110,4 +110,5 @@ https://www.ibm.com/developerworks/cn/linux/l-bash-parameters.html
 创建一个空文件
 
 - `ps aux | sort -nk +4 | tail`
-流出10个最耗内存的进程
+流出10个最耗内存的进程，k代表的是关键字，就是以哪个关键字排序的意思
+
