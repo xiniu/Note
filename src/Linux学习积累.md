@@ -39,6 +39,35 @@
 # C+p 或者C+n自动补齐
 # 可视化模式，也可以给多行做一些操作，参照上面的块操作。一旦选中当行，J可以将多行合并，<和>左右缩进。=自动缩进；选中相关的行,$到行最后，输入A在输入字符串按ESC，在每行末尾添加一个字符串
 # :split创建分屏
+```
+如下是一份vimrc配置文件，用于简单的cpp和c的学习
+```bash
+set number
+set showcmd
+set mouse=a
+set encoding=utf-8
+set t_Co=256
+set autoindent
+set tabstop=4
+set expandtab
+set softtabstop=4
+set cursorline
+set laststatus=2
+set showmatch
+set hlsearch
+set incsearch
+set wildmenu
+set wildmode=longest:list,full
+func SetTitleCPP()
+	call setline(1,"/******************************************")
+    call setline(2,"* 用途：")
+    call setline(3,"* 日期：".strftime("%Y-%m-%d %H:%M:%S"))
+    call setline(4,"******************************************/")
+	normal G
+	normal o
+	normal o
+endfunc
+autocmd bufnewfile *.cpp call SetTitleCPP()
 
 ```
 3. 使用man阅读文档 apropos查找文档 type可以列出一个命令到底是内置命令还是别名
