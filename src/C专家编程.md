@@ -139,4 +139,19 @@ int main(int argc, char ** argv) {
 -1 is less then (unsigned char)1:ANSI
 -1 NOT is less then (uint)1
 ```
+继续考虑下述的例子，考虑为什么x没有赋值成功
+```c
+#include<limits.h>
+#include <stdio.h>
 
+int array[] = {5,15,20,21};
+#define TOTLE_ELEMENTS  sizeof(array) / sizeof(array[0])
+int main(int argc, char ** argv) {   
+    int d = -1, x = 0;
+
+    if (d < TOTLE_ELEMENTS - 1) {
+        x = array[d + 1];
+    }
+    printf("x = %d",x); // why x = 0???
+}
+```
