@@ -1,5 +1,9 @@
 # 第一章 穿越时空的迷雾
 
+
+这个网上在线编译工具挺好用的：
+https://repl.it/@xiniu/FriendlyExcitedSquare#main.c
+
 ## C语言史前阶段
 
 贝尔实验室的Ken Thompson和 Dennis Ritchie发明了C和Unix
