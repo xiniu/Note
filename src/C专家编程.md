@@ -155,3 +155,49 @@ int main(int argc, char ** argv) {
     printf("x = %d",x); // why x = 0???
 }
 ```
+
+# 第二章 这不是bug，而是语言特性
+
+## 多做之过
+
+### fallthrough以及switch语句
+
+switch语句的几个问题：
+- 对于一个匹配都没匹配的场景不会有报错
+- 语句表达式从匹配的case执行，也就是说你期望执行switch后面各个case公共的一些代码，但是这些肯定是不会执行的
+- case都是可选的，且是任何形式的语句，包括带标签的语句都是合法的
+- fallthrough，除非在某个case后主动break，否则从这个case后的语句都会执行
+- 另外break的用法要格外注意，它跳出的是离他最近的switch或者循环语句，不会跳出if等
+
+```c
+#include<limits.h>
+#include <stdio.h>
+
+int array[] = {5,15,20,21};
+#define TOTLE_ELEMENTS  sizeof(array) / sizeof(array[0])
+int main(int argc, char ** argv) {   
+    int d = -1, x = 0;
+
+    if (d < TOTLE_ELEMENTS - 1) {
+        x = array[d + 1];
+    }
+    printf("x = %d\n",x); // why x = 0???
+
+    switch(x){
+        case 0:
+        {
+            printf("1x = %d\n",x); // 
+
+        } 
+        case 2:
+        {
+            printf("2x = %d\n",x); // 
+
+        }
+        defat:
+       {
+            printf("are you kidding?x = %d\n",x); // compile ok?!!
+        }
+    }
+}
+```
