@@ -82,3 +82,211 @@ commit;
 ```
 
 And I Test script in this website:https://sqliteonline.com/
+
+
+## Chapter 1 Retrieving Recoard
+
+Very basic SELECT statements;
+
+- 1.1 Retrieving ALL
+
+```SQL
+select * from emp;
+-- in code, it's better to list every column individually
+select empno, ename, job, mgr, hiredate, sal, comm, deptno from emp;
+```
+
+- 1.2 Retriev Subset Result
+
+```SQL
+--  you can use > < >= <= <> ! 
+select * from emp where deptno = 10
+```
+
+- 1.3 Multipal Conditions
+
+```SQL
+-- use and/or/parenthesi
+select * from emp
+where deptno = 10 
+  or comm is not null
+  or sal < 2000 and deptno = 20;
+  
+-- what if ?
+select * from emp
+where (deptno = 10 
+  or comm is not null
+  or sal < 2000) and deptno = 20
+--
+
+- 1.4 Retrieving Subset columns
+
+```SQL
+select ename, deptno, sal from emp;
+```
+
+- 1.5 Meaningful Names for columns
+
+```SQL
+select sal as salary, comm as commision
+	from emp;
+```
+
+- 1.6 Reference aliased column in where clause
+
+```SQL
+-- you need a inline view
+select * from (select sal as salary, comm as commision
+	from emp)x where salary < 1000;
+```
+
+- 1.7 Concatenating columns value
+
+```SQL
+
+-- for db2 oracle postgresql
+select ename ||  'WORKS AS A ' || job as msg from emp 
+	where deptno = 10
+  
+-- for MS SQL
+select ename +  ' WORKS AS A ' + job as msg from emp 
+	where deptno = 10
+```
+
+- 1.8 Using condition logic in a select statement
+
+```SQL
+select ename, sal,
+	case when sal <= 2000 then 'UNDERPAIED'
+    	 WHEN sal >= 4000 THEn 'OVERPAIED'
+         else 'OK'
+    end as status
+    from emp
+```
+
+- 1.9 Limiting the numer of rows returned
+
+```SQL
+
+-- for postgresql and mysql
+select *
+    from emp limit 5;
+
+-- for ms sql server
+select top 5 * from emp
+
+- for oracle
+select * from from emp where rownum <= 5
+```
+
+- 1.10 Returnning n random records
+
+```SQL
+
+-- for postgresql
+select *
+    from emp ORDER by random() limit 5;
+-- for ms sql server
+select top 5 * 
+  from amp order by newid()
+ 
+-- for oracle   
+select * from (select ename, job
+  from emp ordery by dbms_random.value() 
+  ) where rowum <= 5
+ 
+```
+It is important that you don't confuse using a function in the ORDER BY clause with using a numeric constant. When specifying a numeric constant in the ORDER BY clause, you are requesting that the sort be done according the column in that ordinal position in the SELECT list. When you specify a function in the ORDER BY clause, the sort is performed on the result from the function as it is evaluated for each row.
+
+
+- 1.12 Transformint null to reat Value
+
+```
+-- this is more easier
+select COALESCE (comm, 0) from emp;
+
+select CASE when comm is null then 0 
+	else comm
+    END
+    from emp;
+```
+
+- 1.13 Searching for partterns
+
+```SQL
+select ename, job from emp
+where deptno in (10,20)
+and (ename like '%I%' or job like '%ER')
+
+-- % used for match any sequence of characters; _ for match single character in most sql implement
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
