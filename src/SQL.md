@@ -117,7 +117,7 @@ select * from emp
 where (deptno = 10 
   or comm is not null
   or sal < 2000) and deptno = 20
---
+```
 
 - 1.4 Retrieving Subset columns
 
@@ -201,7 +201,7 @@ It is important that you don't confuse using a function in the ORDER BY clause w
 
 - 1.12 Transformint null to reat Value
 
-```
+```SQL
 -- this is more easier
 select COALESCE (comm, 0) from emp;
 
