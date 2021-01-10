@@ -310,6 +310,88 @@ public:
     }
 };
 ```
+### 1455. 检查单词是否为句中其他单词的前缀
+给你一个字符串 sentence 作为句子并指定检索词为 searchWord ，其中句子由若干用 单个空格 分隔的单词组成。
+
+请你检查检索词 searchWord 是否为句子 sentence 中任意单词的前缀。
+
+如果 searchWord 是某一个单词的前缀，则返回句子 sentence 中该单词所对应的下标（下标从 1 开始）。
+如果 searchWord 是多个单词的前缀，则返回匹配的第一个单词的下标（最小下标）。
+如果 searchWord 不是任何单词的前缀，则返回 -1 。
+字符串 S 的 「前缀」是 S 的任何前导连续子字符串。
+
+来源：力扣（LeetCode）
+链接：https://leetcode-cn.com/problems/check-if-a-word-occurs-as-a-prefix-of-any-word-in-a-sentence
+著作权归领扣网络所有。商业转载请联系官方授权，非商业转载请注明出处。
+
+#### 一些基本思路
+自己实现了GetWord/isPrefix等方法，但其实有更简单的写法
+
+#### 实现
+
+```
+class Solution1455 {
+public:
+	int isPrefixOfWord(string sentence, string searchWord) {
+		int result = -1;
+		int posOfWord = 0;
+		int posOfChar = 0;
+		string curWord;
+		curWord = GetWord(sentence, posOfChar);
+		while (!curWord.empty()) {
+			posOfWord++;
+			posOfChar++;
+			if (isPrefix(searchWord, curWord)) {
+				result = posOfWord;
+				break;
+			}
+			curWord = GetWord(sentence, posOfChar);
+			
+		}
+		return result;
+	}
+	string GetWord(string& sentence, int& posOfChar) {
+		string result("");
+		while (posOfChar < sentence.length() && sentence[posOfChar] != ' ') {
+			result += sentence[posOfChar];
+			posOfChar++;
+		}
+		return result;
+	}
+	bool isPrefix(string& searchWord, string& curWord) {
+		if (searchWord.size() > curWord.size()) {
+			return false;
+		}
+		for (int i = 0; i < searchWord.size(); i++) {
+			if (searchWord[i] != curWord[i]){
+				return false;
+			}
+		}
+		return true;
+	}
+};
+
+class Solution {
+public:
+	int isPrefixOfWord(string sentence, string searchWord) {
+		int ret = 0;
+		int wordBegin = 0;
+		sentence += ' ';
+		for (int i = 0; i < sentence.length(); i++) {
+			if (sentence[i] == ' ') {
+				ret++;
+				int j = 0;
+				for(; j < searchWord.size() && sentence[wordBegin + j] == searchWord[j]; j++) {}
+				if (j == searchWord.size()) {
+					return ret;
+				}
+				wordBegin = i + 1;
+			}
+		}
+		return -1;
+	}
+};
+```
 
 ### No.14 最长公共前缀
 
