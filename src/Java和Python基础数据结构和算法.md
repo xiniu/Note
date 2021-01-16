@@ -9,11 +9,17 @@
 
 ## 常见的接口
 
-- Java不同于C++的地方，对于常见数据结构的使用，有接口的概念；实现接口的实现类可能各部相同，但是都要实现该接口规定的方法
+- Java不同于C++的地方，对于常见数据结构的使用，有接口的概念；实现接口的实现类可能各不相同，但是都要实现该接口规定的方法
 - List接口常见的方法有：
   - 获取大小 `int size()`和判空`bool ieEmpty()`
   - 是否包含某一元素`bool contains(Object o)`和包含传入集合的所有元素`bool containsAll(collection<?>c)`
   - 返回迭代对象`Iterator<E> iterator()`
   - 添加元素`bool add(object o)`、删除元素(如果包含则删除最先找到的一个)`bool remove(object o)`和添加传入集合所有元素`bool addAll(collection<?>c)`
   - 获取普通数组`object[] toArray()`(与之对应的`Arrays.asList(object[])`)
--   
+-  List的常见实现类和特定
+  - ArrayList:数组，连续内存；插入效率差，随机检索效率搞
+  - LinkedList:链表，插入效率搞，随机检索效率低
+  - Vector：同ArrayList但是能保证线程安全
+```java
+
+```
