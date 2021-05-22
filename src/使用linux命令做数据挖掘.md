@@ -41,3 +41,25 @@ echo $PATH | tr ':' '\n' | head -5 | tail -1
 echo $PATH | tr ':' '\n' | head -n 5 | tail -n 1
 /sbin
 ```
+- 使用`awk`
+awk可以用于解析文本字段
+- `awk '{print $n}'`打印每行第n个字段
+- `awk '{print $NF}'`打印每行最后一个字段
+awk默认使用空白作为字段分隔，所以先使用tr命令将冒号转为空格，然后在使用awk可以完成任务：
+```shell
+echo $PATH | tr ':' ' ' | awk '{print $5}'
+/sbin
+```
+但是其实可以更简单，awk有一个很方便的参数可以指定分隔符
+```shell
+echo  $PATH | awk -F:  '{print $5}'
+/sbin
+```
+- 使用`cut`
+cut可以指定任何分隔符分隔文本，可以使用如下命令完成任务：
+```shell
+echo  $PATH | cut -d: -f5
+/sbin
+```
+
+
