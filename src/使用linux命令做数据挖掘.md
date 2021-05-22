@@ -106,8 +106,8 @@ echo  $PATH | tr ':' '\n' | sort | tr '\n' ':'
 ```
 可以发现处理后，最后一行多了一个冒号，可以使用sed去除
 ```shell
-echo  $PATH | tr ':' '\n' | sort | tr '\n' ':'
-/bin:/sbin:/snap/bin:/usr/bin:/usr/games:/usr/local/bin:/usr/local/games:/usr/local/sbin:/usr/sbin:
+echo  $PATH | tr ':' '\n' | sort | tr '\n' ':' | sed -e 's\:$\\'
+/bin:/sbin:/snap/bin:/usr/bin:/usr/games:/usr/local/bin:/usr/local/games:/usr/local/sbin:/usr/sbin
 ```
 
 ## 案例4 只保留前5个行或者字段
