@@ -101,7 +101,7 @@ const Rational operate*(const Rational& lhs, const Rational& rhs);
 ### 1 让自己习惯C++ ###  
 
 
-1. 条款 01：视 C++ 为一个语言联邦
+#### 1. 条款 01：视 C++ 为一个语言联邦
 - 中英文对照
 
 中文 | 英文
@@ -117,7 +117,7 @@ polymorphism  | 多态
 
 - 条款内容：将 C++ 视为一个语言的联邦，而非单一语言。主要有以下4个次语言：C；Object-Oriented C++; Temeplete C++; STL.
 
-2. 条款 02：尽量以`const`, `enum`, `inline` 替换 `#define`
+#### 2. 条款 02：尽量以`const`, `enum`, `inline` 替换 `#define`
 - 条款理解01：对于单纯常量，最好用`const`对象或者`enum`对象替换`#define`
     - why：对于用`#define` 定义常量的情况：`#define` 的名称未进入符号表，难以跟踪调试；使用常量会减少少量的码。
     - 代码讲解：
@@ -126,8 +126,9 @@ polymorphism  | 多态
     const double AspecRatio = 1.653;     //good
     
     const char* const authoName = "Scott Meyers";    //指针和所指之物都是const。
-    const std::string authoName("Scott Meyers");
+    const std::string authoName("Scott Meyers");  // string对象通常比其前辈char*-based更加合适
     
+    // 为了将常量限定在class内，必须将常量定义为成员；但是为了保证常量只有一份，需要让其成为static成员
     class GamePlayer 
     {
     private:
@@ -136,7 +137,7 @@ polymorphism  | 多态
         //some code...
     
     };
-    const int GamePlayer::NumTurns;     //如果要取常量地址或者编译器要求，你必须要定义。放进实现文件
+    const int GamePlayer::NumTurns;     //如果要取常量地址或者编译器要求，你必须提供定义式。放进实现文件
     
     //旧式编译器不支持以上语法，不允许static常量声明时获得初值即in class初值设定。可以将初值放在定义式。
     class CostEstimate
@@ -149,12 +150,12 @@ polymorphism  | 多态
     const static double CostEstimate::FudgeFactor = 1.35;   //static class常量定义 放在实现文件中
     
     //如果编译器不允许in class初值设定，但编译器又在编译期间必须知道初值，例如GamePlayer中的数组。此时
-    //改用 the enum hack补偿做法。一个属于枚举类型的数值可充当int使用。
+    //改用 the enum hack补偿做法，一个属于枚举类型的数值可充当int使用。
         
     class GamePlayer 
     {
     private:
-        enum { NumTurns = 5};  //the enum hack补偿做法
+        enum { NumTurns = 5};  //enum hack补偿做法
         int scores[NumTurns];
         //some code...
      
@@ -181,8 +182,8 @@ polymorphism  | 多态
     }                       //much better
     ```    
 
-3. 条款 03：尽可能使用`const`
-- 条款理解01：对于变量，可以增加一个语义描述，描述该变量不可修改，用以获取编译器的帮助。主要要注意跟指针使用时，到底是指定指针自身、指针所指之物以及两者都是常量。
+####  3. 条款 03：尽可能使用`const`
+- 条款理解01：对于变量，可以增加一个语义描述，描述该变量不可修改，用以获取编译器的帮助。const多才多艺。主要要注意跟指针使用时，到底是指定指针自身、指针所指之物以及两者都是常量。
     - why：明确告诉编译器你的诉求，用以获取编译器的帮助；另外，在函数参数中使用时，有助于调用者判断函数的行为，例如会不会改变参数等；
     - 代码讲解
     ```C++
@@ -191,7 +192,30 @@ polymorphism  | 多态
     const char* p = greeting;           //non-const pointer, const data
     char const * p = greeting;          //non-const pointer, const data
     char* const p = greeting;            //const pointer, non-const data
-    //如果const出现在* 左边意味着所指指物是const。出现在* 右边代表本身是const。这块对于复杂表达式的声明，有通用的方法。
+    // 如果const出现在* 左边意味着所指指物是const。出现在* 右边代表本身是const。这块对于复杂表达式的声明，有通用的方法。
+    // 具体可以参照 https://cdecl.org/ 或者  https://c-faq.com/decl/spiral.anderson.html  或者 https://stackoverflow.com/questions/15111526/complex-c-declaration 或者 https://www.codeproject.com/articles/7042/how-to-interpret-complex-c-c-declarations
+    
+    // 如果被指之物是const，将const置于type之前和之后都是可以的，具体参照习惯,我觉得f1更好
+    void f1(const Widget* pw);
+    void f2(Widget const * pw);
+    
+    // 关于迭代器，声明迭代器为常量就跟声明指针为场景是一样，不能指向其他对象；如果希望是不能指向所改之物，应该使用const_iterator
+    std::vector<int> vec;
+    const std::vect<int>::iterator itr = vec.begin();
+    *itr = 42; // ok
+    ++itr; // error!
+    std::vect<int>:const_iterator citr = vec.begin();
+    *citr = 42; // error!
+    ++citr;
+    
+    // 令函数返回一个常量，往往可以降低客户错误导致的意外
+    class  Rational {...}
+    const Rational operator* (const Ration& lhs, const Ration& rhs){
+    ...
+    }
+    Rationan a, b, c;
+    (a * b) = c; // error!
+    if (a * b = c){...} // error!
     ```
 
 ### C运算符优先级以及备注点
