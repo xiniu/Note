@@ -217,6 +217,38 @@ polymorphism  | 多态
     (a * b) = c; // error!
     if (a * b = c){...} // error!
     ```
+- 条款理解02：将const实施与成员函数可以：1、可以使得class接口更加容易理解，得知哪个函数会修改对象；2、使得“操作const对象成为可能”，按我的理解，就是可以使用的范围变大了，const对象也可以使用。
+    - 两个成员函数如果只是常量性不同，是可以被重载
+    ```C++
+    class TextBlock {
+    public:
+        // ... something
+        const char& operator[](std::size_t position) const
+        { return text[position];}
+        char& operator[](std::size_t position)
+        { return text[position];}
+    private:
+        std::string text;
+    }
+
+    TextBlock tb("Hello");
+    std::cout << tb[0];
+    tb[0] = 'x';  // this is why operator[] return reference type
+
+    TextBlock ctb("Hello");
+    std::cout << ctb[0];
+    ctb[0] = 'x'; // error! write a conts char&;
+
+    void print(const TextBlock& ctb)
+    {
+        std::cout << ctb[0];
+        // ...
+    }
+    ```
+    - bitwise constness(physical constness)：不更改对象内的任何一个bit，即不更改任何成员变量，
+    这个也正是C++对常量性的定义。
+
+
 
 ### C运算符优先级以及备注点
 
@@ -224,16 +256,16 @@ polymorphism  | 多态
 -------|--------
 () [] -> . | 从左至右
 ! ~ ++ -- + - * & (type) sizeof | 从右至左
-*  /  %	| 从左至右
-+  -  | 从左至右
+\*  \/  %	| 从左至右
+\+  -  | 从左至右
 <<  >>  | 从左至右
 <  <=  >  >=  | 从左至右
 == != | 从左至右
 &     | 从左至右
 ^     | 从左至右
-|     | 从左至右
+\|     | 从左至右
 &&    | 从左至右
-||      | 从左至右
+\|\|      | 从左至右
 ?:      | 从左至右
 =  +=  -+  \*=  \/= %= &= | 从左至右
 ^=  |=  <<= >>= | 从左至右
