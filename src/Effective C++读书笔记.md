@@ -296,7 +296,7 @@
     ```
 ## 条款 04：确定对象被使用前已先被初始化 (Make suer that objects are initialized before they're used)
 
-- 条款理解01： 关于“将对象初始化”这事C++反复无常。最佳的处理办法就是在使用对象之前先将它初始化。对于无任何成员函数的内置类型需要手动初始化，对于类对象，初始化的责任在构造函数。但是别混淆了赋值和初始化。C++规定，对象的成员变量的初始化动作发生在进入构造函数本体之前。构造函数最好使用**成员初值列**且总是在初值列列出所有变量。代码讲解如下：
+- 条款理解01： 关于“将对象初始化”这事C++反复无常。最佳的处理办法就是在使用对象之前先将它初始化。对于无任何成员函数的内置类型需要手动初始化，对于类对象，初始化的责任在构造函数。但是别混淆了赋值和初始化。C++规定，对象的成员变量的初始化动作发生在进入构造函数本体之前。构造函数最好使用**成员初值列**且总是在初值列列出所有变量（当然，有时存在多个构造函数、或者成员变量的初始化值需要根据文件读入等场景有例外）。成员变量初始化的顺序是跟声明的顺序一致的，而不管在初始值列中的顺序，为避免迷惑建议初始值中的列顺序跟声明的顺序保持一致。代码讲解如下：
 ```c++
 class PhoneNumber{...}
 class ABEntry {
@@ -322,24 +322,520 @@ ABEntry::ABEntry(const std::string& name, const std::string& address, const std:
 :theName(name),
 theAddress(address),
 thePhones(phones),
-numTimesConsulted(0){
-}
+numTimesConsulted(0){ }
 
 ABEntry::ABEntry()
 :theName(),
 theAddress(),
 thePhones(),
-numTimesConsulted(0){
-}
-
-
-
-
+numTimesConsulted(0){ }
 ```
-- 
+- 条款理解02：static对象代表其生命周期从被构造出来，直到程序结束，这种对象包括global对象、定义于namespace作用域中的对象、在class内、在函数内、以及在file作用域内被声明为static的对象。函数内的static对象称为local static对象。为避免“跨编译单元之初始化次序”问题，请以local static对象替换non-local static对象。C++对“定义于不同编译单元内的non-local static对象”的初始化次序无明确定义，因为决定该顺序非常困难，几乎无解。
+    -  反面代码案例：如何保证tfs在tempDir之前构造呢？没有办法！
+        ```C++
+        class FileSystem {
+        public:
+            //...
+            std::size_t numDisks() const;
+            //...
+        };
 
-## 附录 C运算符优先级以及备注点
+        extern FileSystem tfs; // 预留给客户的使用的对象
 
+        class Directory {
+        public:
+            Directory( param );
+            // ...
+        };
+
+        Directory::Directory( param ) {
+            // ...
+            std::size_t disks = tfs.numDisks(); // 使用tfs
+            // ...
+        }
+
+        Directory tempDir( param );
+        ```
+    - 正面代码案例：将每个non-local static对象搬运到自己专属的函数内，在函数内声明为static，这个函数返回一个reference指向该对象，这是*Singleton*模式的常见实现方法，C++保证函数内的local static对象会在函数被调用期间首次遇到该对象之定义式时被初始化
+        ```C++
+        class FileSystem {
+        public:
+            //...
+            std::size_t numDisks() const;
+            //...
+        };
+
+        FileSystem& tfs() {
+            static FileSystem fs;
+            return fs;
+        }
+
+        class Directory {
+        public:
+            Directory( param );
+            // ...
+        };
+
+        Directory::Directory( param ) {
+            // ...
+            std::size_t disks = tfs().numDisks(); // 使用tfs
+            // ...
+        }
+
+        Directory tempDir( param );
+        ```
+        - 正面代码案例：从C++11开始，static变量是线程安全的，无需写锁保护。因此可以使用最简单的方式实现单例即Singleton，不用加锁、不用doublecheck
+        ```C++
+        class Singleton {
+        public:
+            Singleton& getInstance() {
+                static Singleton inst;
+                return inst;
+            }
+            Singleton(const Singleton&) = delete;
+            Singleton& operator=(const Singleton&) = delete;
+            // other member...
+        private:
+            Singleton() {...}
+        }
+        ```
+
+## 2 构造/析构/赋值运算 (Constructor, Destructor, and Assignment Operators) ##
+
+
+## 条款 05: 了解C++默默编写并调用哪些函数 (Know what functions C++ silently writes and calls)
+
+- 条款理解01：如果你自己没声明，编译器就会生成一个默认的copy构造、copy assignment操作符和一个析构函数。如果没有声明任何构造函数，编译器会生成一个default构造函数（有声明拷贝构造，会不会有default构造呢？ no）。所有这些函数是public且inline。因此如果你写下`class Empty { }`就好比写下如下代码：
+    ```c++
+    class Empty {
+    public:
+        Empty() {...}
+        Empty(const Empty& rhs) {...}
+        ~Empty() {} // 默认式non-virtual的，除非base class自身由声明virtual
+        
+        Empty& operator=(const Empty& rhs){...}
+    };
+    ```
+- 条款理解02：对于copy构造函数、copy assignment操作符，编译器创建的版本只想单纯的将来源对象的每一个non-satic成员变量拷贝到目标对象。且只有确实用的到才会生成：
+    ```c++
+    template<typename T>
+    class NameObject {
+    public:
+        NameObject(const std::string& name, const T& value):nameValue(name), objectValue(value){}
+        void Print(){cout << "name:" << nameValue << "," << "value:" << objectValue << ",address:" << this << endl;}
+    private:
+    std::string nameValue;
+    T objectValue;
+    };
+
+    int main()
+    {
+        NameObject<int> no1("Smallest Prime Number", 2);
+        no1.Print();
+        NameObject<int> no2(no1);
+        no2.Print();
+        no2 = no1;
+    }
+    ```
+- 条款理解03：对于copy构造函数、copy assignment操作符，只有当默认生成的函数代码合法且有意义，编译器才会生成。将上面代码中的成员变量改为`const std::string nameValue;`或者`T &objectValue;`将无法编译通过
+    ```txt
+    source>:21:11: error: use of deleted function 'NameObject<int>& NameObject<int>::operator=(const NameObject<int>&)'
+    21 |     no2 = no1;
+        |           ^~~
+    <source>:6:7: note: 'NameObject<int>& NameObject<int>::operator=(const NameObject<int>&)' is implicitly deleted because the default definition would be ill-formed:
+        6 | class NameObject {
+    ```
+
+## 条款 06: 若不想使用编译器自动生成的函数，就该明确拒绝 (Explicitly disallow the use of compile-generated functions you do not want.)
+
+- 条款理解01：为驳回编译器自动产生copy和copy assignment,可以使用将函数声明为private且故意不实现他们。
+    ```C++
+    class HomeForScale {
+    public:
+        ...
+    private:
+        ...
+        HomeForScale(const HomeForScale&);
+        HomeForScale& operator=(const HomeForScale&); //只有声明
+    }
+    ```
+- 条款理解02：可以使用base class的做法，专门阻止copying动作。
+    ```C++
+    class Uncopyable {
+    protected:
+        Uncopyable() {} // 一定要显式声明
+        ~Uncopyable() {}
+    private:
+        Uncopyable(const Uncopyable&);
+        Uncopyable& operator=(const Uncopyable&);
+    };
+
+    class HomeForScale: private Uncopyable {
+    ...
+    }
+    ```
+- 条款理解03：在C++11时代，引入了很多新特性，移动构造、移动赋值等出现使得这块相对更复杂了；也同时增加了default和deleted关键字，便于管理是否自动生成这些特殊的成员函数：
+    - 如果有任何构造函数声明，则将不会生成default构造函数
+    - 如果有虚析构函数声明，则不会声明默认的析构函数
+    - 如果有移动构造或者移动赋值，则不会自动生成copy构造和copy assignment
+    - 如果有copy构造或者copy assignment，则不会自动生成移动构造或者移动赋值
+    
+    在C++11之后，上述的Uncopyable代码可以简化成：
+    ```C++
+    class Uncopyable {
+    public:
+        Uncopyable() = default; // 效率更高
+        Uncopyable(const Uncopyable&) = delete;
+        Uncopyable& operator=(const Uncopyable&) = delete;
+    };
+    ```
+
+## 条款 07: 为多态基类声明virtual析构函数 (Declare destruction virtual in polymorphic base classes)
+
+- 条款理解01： polymorphic base class应该声明一个virtual析构函数。如果class带有任何一个virtual函数，它就应该拥有一个virtual。C++明确指出当derived class经由一个base class指针删除，而该base class带着一个non-virtual的析构函数，其行为式未定义的
+    ```c++
+    class TimeKeeper {
+    public:
+        TimeKeeper();
+        virtual ~TimeKeeper();
+    };
+    class AtomicClock: public TimeKeeper{...};
+    class WaterClock: public TimeKeeper{...};
+    class WristClock: public TimeKeeper{...};
+    
+    TimeKeeper* ptk = getTimerKeeper(); // Factory函数
+    ...
+    delete ptk;
+    ```
+- 条款理解02： 如果一个类不含其他virtual函数，意味着它并不意图被用作一个base class， 千万不要为其声明virtual析构，带来的影响是：对象会由很客观膨胀，且于其他语言交互会出更多问题。同时，不要试图从不带virtual的类派生，尤其是标准容器等
+
+## 条款 08: 别让异常逃离析构函数 (Prevent exceptions from leaving destructions.)
+
+- 条款理解01： 析构函数绝对不要吐出异常，会导致程序过早退出或出现不明确行为。可以吞下他们或者结束程序
+    ```c++
+    class DBConnetion {
+    public:
+        ...
+        void close();
+    }
+
+    // 使用RAII管理DBConnetion
+    class DBConn {
+    public:
+        ...
+        ~DBConn() {
+            db.close();
+        }
+    private:
+        DBConnetion db;    
+    };
+
+    // 如果有异常，结束异常
+    class DBConnV1 {
+    public:
+        ...
+        ~DBConn() {
+            try {db.close();}
+            catch (...) {
+                Errlog(...);
+                std::abort();
+            }
+        }
+    private:
+        DBConnetion db;    
+    };
+
+    // 如果有异常，吞异常
+    class DBConnV2 {
+    public:
+        ...
+        ~DBConn() {
+            try {db.close();}
+            catch (...) {
+                Errlog(...);
+            }
+        }
+    private:
+        DBConnetion db;    
+    };
+    ```
+- 条款理解02： 如果必须客户向异常做出反应，可以对外提供接口。DBConn对外提供close接口，让客户close。同时自己在析构时检查是否已关闭，没关闭时主动关闭
+    ```C++
+     // 对外提供接口，让客户关闭
+    class DBConnV3 {
+    public:
+        ...
+        void close() {
+            if (!closed){
+                db.close();
+                closed = true;
+            }
+        }
+        ~DBConn() {
+            if (!closed){
+                try {db.close();}
+                catch (...) {
+                    Errlog(...);
+                    std::abort();
+                }
+            }
+        }
+    private:
+        DBConnetion db;
+        bool closed;  
+    };
+
+    ```
+
+## 条款 09: 绝不在构造和析构过程中调用virtual函数 (Never call virtual functions during construction or descontruction.)
+
+- 条款理解01： 简单理解在构造和析构期间，derived class根本不存在，virtual函数不是virtual函数。如果确实需要在构造时获取必要信息，请将derived class在构造时向上传递
+  - 错误代码
+    ```C++
+    class Transaction {
+    public:
+        Transaction();
+        virtual void logTransaction() const = 0;
+    }
+
+    Transaction::Transaction() {
+        ...
+        logTransaction(); // Error!  想在构造时记录日志
+    }
+    class BuyTransaction: public Transaction {
+    public:
+        virtual void logTransaction() const {
+            ...
+        }
+        ...
+    }
+    class BellTransaction: public Transaction {
+    public:
+        virtual void logTransaction() const {
+            ...
+        }
+        ...
+    }
+    ```
+  - 正确代码
+    ```C++
+    class Transaction {
+    public:
+        explicit Transaction(const std::string& logInfo);
+        void logTransaction(const std::string& logInfo) const;
+    }
+
+    Transaction::Transaction(const std::string& logInfo) {
+        ...
+        logTransaction(logInfo); 
+    }
+    class BuyTransaction: public Transaction {
+    public:
+        BuyTransaction(parameters) : Transaction(createLogString(parameters)){
+            // 如果确实需要在构造时获取必要信息，请将derived class在构造时向上传递
+            ....
+        }
+    private:
+        static void createLogString() {
+            ...
+        }
+        ...
+    }
+    ```
+
+## 条款 10: 令operator= 返回一个reference to *this (Hava assignment operators return a reference to *this.)
+
+- 条款理解01：为了“连锁赋值”，所有赋值相关运算符建议返回*this的引用。
+    ```c++
+    class Widget {
+    public:
+        ...
+        Widget& operator=(const Widget& rhs){
+            ...
+            return *this;
+        }
+        Widget& operator+=(const Widget& rhs){
+            ...
+            return *this;
+        }
+        Widget& operator=(int rhs){
+            ...
+            return *this;
+        }
+        ...
+    }
+    ```
+
+## 条款 11: 在operator= 中处理“自我赋值” (Handle assignment to self in operator=.)
+
+- 条款理解01：确保对象自我赋值时有良好的行为。
+  ```C++
+    class BitMap {...};
+    class Widget {
+        ...
+    private:
+        BitMap *pb;
+    } 
+    // 一份不安全的实现，如果出现自我赋值，pb会被销毁
+    Widget& Widget::operator=(const Widget& rhs) {
+        delete pb;
+        pb = new BitMap(*rhs.pb);
+        return *this;
+    }
+  ```
+  如下三类技术解决，推荐优先级由低到高：
+    - 证同测试（identity test）,具备自我赋值安全性，不具备异常性。如果new失败，Widget持有的指针有害。
+        ```c++
+        Widget& Widget::operator=(const Widget& rhs) {
+            if (this == &rhs) return *this;
+            delete pb;
+            pb = new BitMap(*rhs.pb);
+            return *this;
+        }
+        ```
+    - 精心安排语句：
+        ```C++
+        Widget& Widget::operator=(const Widget& rhs) {
+            BitMap* pOrig = pb;
+            pb = new BitMap(*rhs.pb);
+            delete pOrig;
+            return *this;
+        }
+        ```
+    - copy and swap技术：
+        ```C++
+        class Widget {
+        ...
+            void swap(Widget &rhs);
+        } 
+        
+        Widget& Widget::operator=(const Widget& rhs) {
+            Widget temp(rhs);
+            swap(temp);
+            return *this;
+        }
+
+        Widget& Widget::operator=(const Widget rhs) { // creat copy temp when pass by value
+            swap(rhs);
+            return *this;
+        }
+
+        ```
+
+## 条款 12: 复制对象时勿忘每一个成分 (Copy all parts of an object.)
+
+- 条款理解01：Copying函数应该确保复制“对象内所有成员变量”以及“所有base class成分”（掉用base的copying函数）
+    ```CPP
+    class Customer {
+    public:
+        ...
+        Customer(const Customer& rhs);
+        Customer& operator=(const Customer&rhs);
+        ...
+    private:
+        std::string name;
+    }
+    Customer::Customer(const Customer& rhs) : name(rhs.name){ }
+    Customer::Customer& operator=(const Customer&rhs){
+        name = rhs.name;
+        return *this;
+    }
+
+    class PriorityCustomer: public Customer {
+    public:
+        ...
+        PriorityCustomer(const PriorityCustomer& rhs);
+        PriorityCustomer& operator=(const PriorityCustomer&rhs);
+        ...
+    private:
+        int priority;
+    }
+
+    PriorityCustomer::PriorityCustomer(const PriorityCustomer& rhs) : Customer(rhs), priority(rhs.priority){ }
+    PriorityCustomer::PriorityCustomer& operator=(const PriorityCustomer&rhs){
+        Customer::operator=(rhs);
+        priority = rhs.priority;
+        return *this;
+    }
+    ```
+- 条款理解02：不要尝试使用一个copying函数调用另一个copying函数。如果确实由很多重复代码，可以把重复代码封装到第三个函数，然后两个copying函数分别调用。
+
+## 3 资源管理
+
+## 条款 13: 以对象管理资源(Use objetcs to manage resource)
+
+- 条款理解01：主要就是使用RAII惯用法来管理资源，所谓RAII（Resource Acquisition Is Initialization）：
+  - 获得资源后立刻放到资源管理对象中
+  - 管理对象运用析构函数确保资源释放
+- 条款理解02：由于智能指针等在C++11之后由新的变化，所以不再赘述。RAII也是比较熟悉的特性，不再赘述。
+  
+## 条款 14: 在资源管理类中小心copying行为（Think carefully about copying bahavior in resource-namaging classes）
+
+- 条款理解01： 如何处理RAII对象的copying行为，基本的处理思路：禁止拷贝（想想都有哪些手段）、所有权转移、使用引用计数。这实际就是C++11之后的unique_ptr和shared_ptr。 本文不再赘述
+
+
+## 条款 15: 在资源管理类中提供对原始资源的访问（Provide access to raw resource in resource-managing classes）
+
+- 条款理解01： 现实的代码世界存在很多APIs指涉资源，例如裸指针。资源管理类需要提供接口，直接返回资源，一般建议： 使用`get()`方法返回裸指针、重载指针取值操作符(`operator->`和`operator*`)直接转换至底部资源.C++11中的智能指针就是如此实现的。
+  ```C++
+  class NameObject {
+    public:
+        NameObject(const std::string& name, const int& value):nameValue(name), objectValue(value){}
+    
+    public:
+    std::string nameValue;
+    int objectValue;
+    };
+
+    void oldAPI(NameObject* ptr) {
+        ptr->nameValue = ptr->nameValue + "+1";
+        ptr->objectValue++;
+
+    }
+    int main()
+    {
+        auto up = make_unique<NameObject>("ONE",1);
+        cout << up->nameValue << ":" << up->objectValue << endl;
+        oldAPI(up.get());
+        cout << (*up).nameValue << ":" << (*up).objectValue<< endl;
+    }
+  ```
+
+- 条款理解02：有时候方便期间，可以提供隐式转换的能力，从资源管理隐式转化为原始资源
+    ```CPP
+    FontHandle getFont(); // 原生的获取handle的方法，C API
+    void releaseFont(FontHandle fh); // 原生获取handle必须经由此释放，C API
+    void changeFontSize(FontHanle f, int newSize); // C API
+
+    // example 1: explicit转化
+    class FontV1 {
+    public:
+        explicit Font(FontHandle fh) : f(fh) {}
+        ~Font() { releaseFont(f);} // RAII
+        FontHandle get() const {return f;}
+    private:
+        FontHandle f;
+    }
+
+    Font f(getFont());
+    changeFontSize(f.get(), someSize); // 每次调用都要调用get
+
+    // example 1: implicit转化
+    class FontV2 {
+    public:
+        explicit Font(FontHandle fh) : f(fh) {}
+        ~Font() { releaseFont(f);} // RAII
+        operator FontHandle() const { return f;} // 隐式转化函数
+    private:
+        FontHandle f;
+    }
+
+    Font f(getFont());
+    changeFontSize(f, someSize); // Font隐式转化为FontHandle
+    ```
+
+
+## 附录 运算符顺序
 | 运算符                          | 结合性     |
 | ------------------------------- | ---------- |
 | () [] -> .                      | 从左至右   |
@@ -360,9 +856,82 @@ numTimesConsulted(0){
 | ,                               | 从左至右   |
 
 注意第二行几个一元运算符的结合顺序是从右到左,下面的括号不能去掉
-```
+```C++
 // 将ip指向的对象+1
 *ip += 1
 ++*ip
 (*ip)++
+```
+
+
+## 附录 C++ Access
+- A member of class's access
+
+    | Access    | 说明                             |
+    | --------- | -------------------------------- |
+    | private   | 仅能够被该类其他成员函数使用     |
+    | protected | 可以被该类其他成员函数和子类使用 |
+    | public    | 可以被任意函数调用使用           |
+- Base class's access
+
+    | Access    | 说明                                                       |
+    | --------- | ---------------------------------------------------------- |
+    | private   | base类的public、protected成员仅能被derive类的成员使用      |
+    | protected | 在private的基础上+derive类字类的成员使用                   |
+    | public    | 在protected的基础上 + base类的public可以被任意函数调用使用 |
+
+测试程序
+```C++
+// 将ip指向的对象+1
+class Parent {
+public:
+    void publicMethodOfParent(){ 
+        privateMethodOfParent();    // it's ok
+        protectedMethodOfParent(); // it's ok
+        cout << "publicMethodOfParent()" << endl; };
+protected:
+    void protectedMethodOfParent() { 
+        privateMethodOfParent(); // it's ok
+        cout << "protectedMethodOfParent()" << endl; 
+    };
+private:
+    void privateMethodOfParent(){ cout << "privateMethodOfParent()" << endl; }
+};
+class PrivateDerived : private Parent {
+protected:
+    void protectedMethodOfPrivateDerived(){
+        // privateMethodOfParent(); nok
+        protectedMethodOfParent();
+        publicMethodOfParent();
+    }    
+};
+class ProtectedDerived : protected Parent {
+protected:
+    void protectedMethodOfPrivateDerived(){
+        //privateMethodOfParent(); nok
+        protectedMethodOfParent();
+        publicMethodOfParent();
+    }    
+};
+class PublicDerived : public Parent {
+protected:
+    void protectedMethodOfPublicDerived(){
+        //privateMethodOfParent(); nok
+        protectedMethodOfParent();
+        publicMethodOfParent();
+    }    
+};
+
+int main()
+{
+    Parent p;
+    // p.privateMethodOfParent(); nok
+    // p.protectedMethodOfParent(); nok
+    p.publicMethodOfParent();
+    ProtectedDerived p1;
+    // p1.publicMethodOfParent(); // non error: 'Parent' is not an accessible base of 'ProtectedDerived'
+    PublicDerived p2;
+    p2.publicMethodOfParent(); 
+    return 0;    
+}
 ```
