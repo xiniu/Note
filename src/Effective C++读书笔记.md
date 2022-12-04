@@ -169,7 +169,7 @@
     
     int a = 5, b = 0;
     CALL_WITH_MAX(++a, b);      //a++ for 2 times
-    CALL_WITH_MAX(++a, b+10);   //a++ fro 1 times
+    CALL_WITH_MAX(++a, b+10);   //a++ for 1 times
     
     
     templete<typename T>
@@ -719,7 +719,6 @@ numTimesConsulted(0){ }
             swap(rhs);
             return *this;
         }
-
         ```
 
 ## 条款 12: 复制对象时勿忘每一个成分 (Copy all parts of an object.)
@@ -801,7 +800,7 @@ numTimesConsulted(0){ }
     }
   ```
 
-- 条款理解02：有时候方便期间，可以提供隐式转换的能力，从资源管理隐式转化为原始资源
+- 条款理解02：有时候方便起见，可以提供隐式转换的能力，从资源管理隐式转化为原始资源
     ```CPP
     FontHandle getFont(); // 原生的获取handle的方法，C API
     void releaseFont(FontHandle fh); // 原生获取handle必须经由此释放，C API
@@ -834,6 +833,154 @@ numTimesConsulted(0){ }
     changeFontSize(f, someSize); // Font隐式转化为FontHandle
     ```
 
+## 条款 16: 成对使用new和delete时要采取相同形式（Use the same form in corresponding use of new and delete）
+
+- 条款理解01：`new`和`delete`， `new []`和`delete []`必须要配套使用，否则会导致未定义行为
+    ```C++
+    std::string* strPtr1 = new  std::string;
+    std::string* strPtr2 = new  std::string[100];
+    ...
+    delete strPtr1;
+    delete []strPtr2;
+    ```
+- 条款理解02：永远不要对数组形式`typedef`，尽量使用`string` 和 `vector`等stl容器
+    ```C++
+    typedef std::string AddressLine[4];
+
+    AddressLine* pal = new AddressLine;
+    ...
+    delete AddressLine;  // Dangerous
+    ```
+## 条款 17: 以独立语句将newed对象置入智能指针（Use newed objeces in smart pointers in standalone statement)
+
+- 条款理解01：以独立语句将newed语句置入智能指针，如果不这样做，一旦异常被抛出，可能导致资源泄露。主要的原因时，我们希望newed的指针和智能指针的构造函数中间不能被打断，但是C++语言并不是以特定顺序计算参数。
+    ```C++
+    int priority();
+    void processWidget(std::shared_ptr<Widget> pw, int priority);   
+    ...
+    // bad example. what if: 
+    // step1 new Widget; 
+    // step2 call ();-----> may throw exception ? 
+    // step 3 construct of shared_ptr
+    processWidget(std::shared_ptr<Widget>(new Widget), priority());
+
+    // good example. : set newed objeces in smart pointers in standalone statement
+    std::shared_ptr<Widget> pt(new Widget);
+    processWidget(pt, priority());
+    ```
+- 条款理解02：在C++11中，尽可能使用`make_unique`、`make_shared`也可以解决该类困境。
+    ```C++
+    // good example . : after c++11, prefer make_unique、 make_shared
+    std::shared_ptr<Widget> pt(new Widget);
+    processWidget(std::make_shared<Widget>(), priority());
+    ```
+
+## 设计与声明
+
+## 条款 18：让接口容易被使用，不易被误用（Make interfaces easy to use correctly and hard to use incorrectly）
+
+- 条款理解01： 可以通过引入新类型的方式提升接口的易用性。
+    ```C++
+    // Bad example:
+    class Date {
+    public:
+        Date(int month, int day, int year);
+        ...
+    };
+    // 如上的接口实现会导致各种各样的问题
+    // 1 以错误次序传参; 2 传递无效的月份；
+    Data d(30, 3, 1995);
+    Date d(2, 30, 1995);
+
+    // Good example: 引入新的类型、限制其值
+    struct Day {
+        explicit Day(int d) : val(d){}
+        int val;
+    };
+
+    struct Month {
+        explicit Month(int m) : val(m){}
+        int val;
+    };
+
+    struct Year {
+        explicit Year(int y) : val(y){}
+        int val;
+    };
+
+    class Date {
+    public:
+        Date(const Month& m, const Day& d, const Year& y);
+        ...
+    };
+    // 可以解决以错误次序传参的问题
+    Date d(Month(3), Day(30), Year(1995));
+
+    // 可以更进一步的，限定Month类型的所有合理的值
+    class Month {
+    public:
+        static Month Jan() {return Month(1);}
+        static Month Feb() {return Month(2);}
+        ...
+        static Month Dec() {return Month(12);}
+        ...
+    private:
+        explicit Month(int m);
+        ...
+    }
+  ```
+- 条款理解02： 限制类型内什么操作可以做。参照条款3，让```const```修饰```operator*```的返回值，可以避免客户犯如下错误```if (a = b * c)```
+    ```C++
+    const Rational operator* (const Rational &lhs, const Rational &rhs)
+    ```
+- 条款理解03： 尽量让你的types的行为和内置类型一致。好的例子是C++ STL每个容器都有一个size成员函数。反例是java语言，针对数组，有一个length的成员变量；针对String， 有一个lengh()方法； 针对list， 有一个size()方法。
+
+- 条款理解04：任何接口如果要求客户必须做某些事，就有着“不正确使用”的倾向。
+    ```C++
+    // Bad example: 如下的factory函数，开启了两个客户错误的机会：
+    // 1 没有删除指针； 2 删除指针两次
+    Invesment* createInvestMent(...);
+
+    // Good Example:
+    std::shared_ptr<Invesment> createInvestment(...);
+
+    // 甚至可以定制删除器，并解决cross-DLL problem
+    std::shared_ptr<Invesment> createInvestment(...){
+        std::shared_ptr<Invesment> retVal(static_cast<Investment*>(0), getRidOfInvestment);
+        retVal = ...; // 令retVal指向正确的对象
+        return retVal; 
+    }
+    ```
+
+## 条款 19：设计class犹如设计type（Treat class design as type design）
+
+- 条款理解01： 你应该带着和“语言设计者当初设计语言内置类型时”一样谨慎的研讨class的设计：
+    - 新type的对象应该如何被创建和销毁？ 这回影响你的class的构造函数、析构函数、内存分配函数、内存释放函数等
+    - 对象的初始化和赋值该有什么样的行为
+    - 新type的对象如果被passed by value，意味着什么？ 即copy构造如何实现
+    - 有哪些合法值
+    - 继承图系(inheritance graph)
+    - 新的type需要什么样的转化？ 如果你希望类型T1之物被隐式转化为T2之物，那么必须在```class T1```中写一个类型转化函数```operator T2```或在```class T2```中写一个non-explicit-one-arguement
+    - 什么样的操作符和函数对此新type而言是合理的
+    - 该如何取用成员
+    - 什么是“未声明接口(undeclared interface)”
+    - 新的type有多一般化？ 是否考虑应该定义一个class template
+    - 你真的需要一新的type吗？如果只是为一个```derived class```增加技能，单纯定义non-member函数或者template，更能达到目标
+
+## 条款 20：宁以pass-by-reference-to-const替换pass-by-value(Prefer pass-by-reference-to-const to pass-by-value)
+
+- 条款理解01： 你应该带着和“语言设计者当初设计语言内置类型时”一样谨慎的研讨class的设计：
+    - 新type的对象应该如何被创建和销毁？ 这回影响你的class的构造函数、析构函数、内存分配函数、内存释放函数等
+    - 对象的初始化和赋值该有什么样的行为
+    - 新type的对象如果被passed by value，意味着什么？ 即copy构造如何实现
+    - 有哪些合法值
+    - 继承图系(inheritance graph)
+    - 新的type需要什么样的转化？ 如果你希望类型T1之物被隐式转化为T2之物，那么必须在```class T1```中写一个类型转化函数```operator T2```或在```class T2```中写一个non-explicit-one-arguement
+    - 什么样的操作符和函数对此新type而言是合理的
+    - 该如何取用成员
+    - 什么是“未声明接口(undeclared interface)”
+    - 新的type有多一般化？ 是否考虑应该定义一个class template
+    - 你真的需要一新的type吗？如果只是为一个```derived class```增加技能，单纯定义non-member函数或者template，更能达到目标
 
 ## 附录 运算符顺序
 | 运算符                          | 结合性     |
@@ -877,7 +1024,7 @@ numTimesConsulted(0){ }
     | Access    | 说明                                                       |
     | --------- | ---------------------------------------------------------- |
     | private   | base类的public、protected成员仅能被derive类的成员使用      |
-    | protected | 在private的基础上+derive类字类的成员使用                   |
+    | protected | 在private的基础上+derive类子类的成员使用                   |
     | public    | 在protected的基础上 + base类的public可以被任意函数调用使用 |
 
 测试程序
