@@ -969,18 +969,251 @@ numTimesConsulted(0){ }
 
 ## 条款 20：宁以pass-by-reference-to-const替换pass-by-value(Prefer pass-by-reference-to-const to pass-by-value)
 
-- 条款理解01： 你应该带着和“语言设计者当初设计语言内置类型时”一样谨慎的研讨class的设计：
-    - 新type的对象应该如何被创建和销毁？ 这回影响你的class的构造函数、析构函数、内存分配函数、内存释放函数等
-    - 对象的初始化和赋值该有什么样的行为
-    - 新type的对象如果被passed by value，意味着什么？ 即copy构造如何实现
-    - 有哪些合法值
-    - 继承图系(inheritance graph)
-    - 新的type需要什么样的转化？ 如果你希望类型T1之物被隐式转化为T2之物，那么必须在```class T1```中写一个类型转化函数```operator T2```或在```class T2```中写一个non-explicit-one-arguement
-    - 什么样的操作符和函数对此新type而言是合理的
-    - 该如何取用成员
-    - 什么是“未声明接口(undeclared interface)”
-    - 新的type有多一般化？ 是否考虑应该定义一个class template
-    - 你真的需要一新的type吗？如果只是为一个```derived class```增加技能，单纯定义non-member函数或者template，更能达到目标
+- 条款理解01： 尽量以pass-by-reference-to-const替换pass-by-value。前者通常比较高效，并可以避免slicing problem
+    ```C++
+    class Person {
+    public:
+        Person();
+        virtual ~Person();
+    private:
+        std::string name;
+        std::string address;
+    };
+
+    class Student : public Person  {
+    public:
+        Student();
+        ~Student();
+    private:
+        std::string schoolName;
+        std::string schoolAddress;
+    };
+
+    // by value传参数会拷贝对象（包括内部的其他类型对象成员），造成严重的开销
+    bool validateStudent(Student s);
+
+    // pass-by-reference-to-const效率高的多，没有多余的构造或者析构函数调用；不必考虑会修改入参
+    bool validateStudent(Student s);
+
+
+    class Window {
+    public:
+        ...
+        string name() const;
+        virtual void desplay() const;
+    };
+
+    class WindowWithScrollBars: public Window {
+    public:
+        ...
+        virtual void desplay() const;
+    };
+
+    void prinNameAndDisplay(Window w) {
+        cout << w.name() << endl;
+        w.display();
+    }
+    WindowWithScrollBars wwsb;
+    prinNameAndDisplay(wwsb); // 会发生对象切割，w.display();调用的总是Window::desplay()
+
+
+    void prinNameAndDisplayV2(const Window& w) {
+        //  传进来是什么类型，实际表现就是什么类型
+            cout << w.name() << endl;
+            w.display();
+        }
+    WindowWithScrollBars wwsb;
+    prinNameAndDisplay(wwsb); 
+    ```
+
+- 条款理解02： 内置类型、STL迭代器、函数对象的呢个，pass-by-value更合适。当然并不是绝对的，所有小型types都应该设计成pass-by-value
+
+## 条款 21：必须返回对象时，别妄想返回其reference(Don't try to return a reference when you must return an object)
+
+- 条款理解01：一个“必须返回新对象”的函数的正确写法是：就让那个函数返回一个新对象。一切通过reference、pointer返回栈对象、堆对象都是徒劳的
+    ```C++
+    const Rational operator* (const Rational &lhs, const Rational &rhs){
+        return Rational(lhs.n * rhs.n, lhs.d * rhs.d);
+    }
+    ```
+
+## 条款 22：将成员变量声明为private(Declare data members private.)
+
+- 条款理解01：将成员变量声明为private，可以赋予客户访问数据的一致性、可细微划分访问控制、允诺约束条件获得保证，并提供充分的弹性（例如，修改优化实现逻辑）
+- protected并没有比public提供更多的封装性。 针对封装性的理解，**“当其内容改变时可能造成的代码破坏量”**，“愈多的函数可以访问它，数据的封装性越低”。
+
+
+## 条款 23：宁以non-member、non-friend替换member函数(Prefer non-member non-friend functions to member function)
+
+- 条款理解01：宁以non-member、non-friend替换member函数。这样做可以增加封装性、包裹弹性(packaging flexibility)和技能扩充性
+    ```C++
+    class WebBrowser {
+    public:
+        ...
+        void clearCache();
+        void clearHistory();
+        void removeCookies();
+        ...
+    };
+    
+    // 如果要增加一个清理所有的操作，可以通过member函数方式
+    class WebBrowser {
+    public:
+        ...
+        void clearEverything(); // 分别调用clearCache、clearHistory、removeCookies
+        ...
+    };
+
+    // 也可以通过non-member的方式
+    void clearBrowser(WebBrowser &wb) {
+        wb.clearCache();
+        wb.clearHistory();
+        wb.removeCookies();
+    }
+
+    // non-member更优的原因时：
+    //  1 没有增加“能够访问class内部private成员成分的”数量
+    //  2 更低编译相依度
+    ```
+- 条款理解02：在C++中，常见的一种处理方式是将便利函数放置在多个头文件中、但是隶属于同一个命名空间，客户可以更轻松的做扩充
+    ```C++
+    // 头文件webbrowser.h 这个头文件针对class WebBrowser自身以及核心功能
+    namespace WebBrowserStuff {
+    class WebBrowser{...}
+    ... // 核心机能，所有客户都会用到的non-member函数
+    }
+
+    // 头文件webbrowserbookmarks.h 
+    namespace WebBrowserStuff {
+    ... // 与书签相关的便利函数
+    }
+
+    // 头文件webbrowsercookies.h 
+    namespace WebBrowserStuff {
+    ... // 与cookie有关的便利函数
+    }
+    ```
+
+## 条款 24：若所有参数皆需要类型转化，请为此采用non-member函数(Declare non-member function when type conversions should apply to all parameters)
+
+- 条款理解01：虽然令class支持隐式转化往往是个糟糕的主意，但是凡事均有例外。例如，当前项建立一个数值类型时，允许整数转换为有理数的要求颇为合理。当你想某个函数的所有类型都支持隐式转化，那么这个函数必须是个non-member。
+    ```C++
+    class Rational {
+    public:
+        Rational(int numerator = 0, int denominator = 1); // 无explicit，允许转化
+        int numerator() const;
+        int denominator() const;
+    private:
+        ...
+    }
+
+    // 当你想支持乘法时， 如果把operator* 实现为成员函数：
+    class Rational {
+    public:
+        ...
+        const Rational operator*(const Ration& rhs) const;
+        ...
+    };
+
+    Rational oneHalf(1,2);
+    Rational result = oneHalf * 2; // can work
+    result = 2 * oneHalf ; // can not work
+
+    // 如果把operator* 实现为non-member函数，将解决所有问题
+    class Rational {
+    public:
+        ...
+    };
+    const Rational operator*(const Ration& lhs, const Ration& rhs) {
+        return Rational(lhs.numerator() * rhs.numerator(),
+        lhs.denominator() * rhs.denominator());
+    }
+    Rational oneHalf(1,2);
+    Rational result = oneHalf * 2; // can work
+    result = 2 * oneHalf ; // not work
+    ```
+
+
+## 条款 25：考虑写出一个不抛出异常的swap函数(Consider support for a non-throwing swap)
+
+- 条款理解01：swap原本只是STL的一部分，但是后来成为异常安全性编程的脊柱，以及用来处理自我赋值问题。缺省的swap版本对某些类型的对象十分低效，典型的pimpl用法中使用默认的swap实现明显不合理。
+    ```C++
+    namespace std {
+        template<typename T>
+        swap(T& a, T& b) {
+            T temp(a); 
+            a = b;
+            b = temp;
+        }
+    }
+
+    // pimp手法
+    class WidgetImpl {
+    public:
+    ...
+    private:
+        int a, b, c;
+        std::vector<double> v; // so many data;
+    }
+
+    class Widget {
+    public:
+        Widget(const Widget& rhs);
+        Widget& operator=(const Widget& rhs) {
+            ...
+            *pImpl = *(rhs.pImpl);
+            ...
+        }
+    private:
+        WidgetImpl* pImpl;
+        }
+    }
+    ```
+- 条款理解02：针对class类型，可以增加一个swap的成员函数，然后将std::swap特化，令他调用该成员函数。
+    ```C++
+    class Widget {
+    public:
+        ...
+        void swap(Widget &other) {
+            using std::swap;
+            swap(pImpl, other.pImpl);
+        }
+    ...
+    };
+
+    namespace std {
+        template<>
+        void swap<Widget>(Widget& a, Widget& b) {
+            a.swap(b);
+        }
+    }
+    ```
+- 条款理解03：如果考虑到模板类，情况比较复杂：在你的class或者template所在的命名空间提供一个non-member swap， 并令其调用swap成员函数，并且建议std::swap版本也要提供(为那些使用std::swap的迷途程序员提供帮助)。
+    ```C++
+    namespace WidgetStuff {
+        ...
+        template<typename T>
+        class Widget {...};
+
+        template<typename T> // non-member swap函数，但是这不属于std命名空间
+        void swap(Widget<T>& a, Widget<T>& b) {
+            a.swap(b);
+        }
+
+        namespace std {
+            template<>
+            void swap<Widget>(Widget& a, Widget& b) {
+                a.swap(b);
+            }
+        }
+    }
+
+    template<typename T>
+    void doSomething(T &obj1, T &obj2){
+        using std::swap; // 令std::swap可见
+        swap(obj1, obj2); // 为T型别找最佳的swap（global或者T所属命名空间中的--> std命名空间中的）
+    }
+    ```
 
 ## 附录 运算符顺序
 | 运算符                          | 结合性     |
