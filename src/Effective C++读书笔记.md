@@ -1,6 +1,6 @@
 # *Effective* *C++* 读书笔记
 
-## 0 导读 ##
+## 0 导读 (Introduction) ##
 
 1. 中英文对照（只列举不会的）
 
@@ -70,7 +70,7 @@
     doSomething(B(28))      //ok!
     ```
 
-- *copy*构造函数和*copy assignment*函数。*copy*构造函数用来用另一个对象初始化自我对象 ，*copy assignment*函数用来从另一个对象拷贝值到自我对象。一个是构造函数，一个是赋值操作。如果有新对象被创建，用的肯定是构造函数；如果没有新对象被创建，肯定是赋值操作。值传递方式传递参数时肯定会调用*copy*构造函数，往 STL 容器放值也应当是*copy*构造函数被调用。
+- *copy*构造函数和*copy assignment*函数。*copy*构造函数用来用另一个对象初始化自我对象 ，*copy assignment*函数用来从另一个对象拷贝值到自我对象。一个是构造函数，一个是赋值操作。**如果有新对象被创建，用的肯定是构造函数；如果没有新对象被创建，肯定是赋值操作**。值传递方式传递参数时肯定会调用*copy*构造函数，往 STL 容器放值也应当是*copy*构造函数被调用。
     ```C++
     class Widget
     {
@@ -101,7 +101,7 @@
 ## 1 让自己习惯C++ (Accustoming Yourself to C++) ##
 
 
-## 条款 01：视 C++ 为一个语言联邦 ##
+## 条款 01：视 C++ 为一个语言联邦 (Vew C++ as a federation of langueges) ##
 - 中英文对照
 
     | 中文                 | 英文     |
@@ -119,7 +119,7 @@
 
 ## 条款 02：尽量以`const`, `enum`, `inline` 替换 `#define` (Prefer `consts`, `enums`, and `inline` to `#define`) ##
 - 条款理解01：对于单纯常量，最好用`const`对象或者`enum`对象替换`#define`
-    - why：对于用`#define` 定义常量的情况：`#define` 的名称未进入符号表，难以跟踪调试；使用常量会减少少量的码。
+    - why：对于用`#define` 定义常量的情况：`#define` 的名称未进入符号表，难以跟踪调试(但是使用常量会减少少量的码)。
     - 代码讲解：
     ```C++
     #define ASPEC_RATIO 1.653;           //bad
@@ -214,7 +214,7 @@
     (a * b) = c; // error!
     if (a * b = c){...} // error!
     ```
-- 条款理解02：将const实施于成员函数可以：1、可以使得class接口更加容易理解，得知哪个函数会修改对象；2、使得“操作const对象成为可能”，按我的理解，就是可以使用的范围变大了，const对象也可以使用。
+- 条款理解02：将const实施于成员函数可以：1、可以使得class接口更加容易理解，得知哪个函数会修改对象；2、使得“操作const对象成为可能”，按我的理解，就是对应的方法可以被使用的范围变大了，const对象也可以使用。
     - 两个成员函数如果只是常量性不同，是可以被重载
     ```C++
     class TextBlock {
@@ -405,7 +405,7 @@ numTimesConsulted(0){ }
 
 ## 条款 05: 了解C++默默编写并调用哪些函数 (Know what functions C++ silently writes and calls)
 
-- 条款理解01：如果你自己没声明，编译器就会生成一个默认的copy构造、copy assignment操作符和一个析构函数。如果没有声明任何构造函数，编译器会生成一个default构造函数（有声明拷贝构造，会不会有default构造呢？ no）。所有这些函数是public且inline。因此如果你写下`class Empty { }`就好比写下如下代码：
+- 条款理解01：如果你自己没声明，编译器就会生成一个默认的copy构造、copy assignment操作符和一个析构函数。如果没有声明任何构造函数，编译器会生成一个default构造函数（如果声明了拷贝构造，会不会有default构造呢？ no）。所有这些函数是public且inline。因此如果你写下`class Empty { }`就好比写下如下代码：
     ```c++
     class Empty {
     public:
@@ -492,7 +492,7 @@ numTimesConsulted(0){ }
 
 ## 条款 07: 为多态基类声明virtual析构函数 (Declare destruction virtual in polymorphic base classes)
 
-- 条款理解01： polymorphic base class应该声明一个virtual析构函数。如果class带有任何一个virtual函数，它就应该拥有一个virtual。C++明确指出当derived class经由一个base class指针删除，而该base class带着一个non-virtual的析构函数，其行为式未定义的
+- 条款理解01： polymorphic base class应该声明一个virtual析构函数。如果class带有任何一个virtual函数，它就应该拥有一个virtual析构函数。C++明确指出当derived class经由一个base class指针删除，而该base class带着一个non-virtual的析构函数，**其行为式未定义的**
     ```c++
     class TimeKeeper {
     public:
@@ -507,7 +507,7 @@ numTimesConsulted(0){ }
     ...
     delete ptk;
     ```
-- 条款理解02： 如果一个类不含其他virtual函数，意味着它并不意图被用作一个base class， 千万不要为其声明virtual析构，带来的影响是：对象会由很客观膨胀，且于其他语言交互会出更多问题。同时，不要试图从不带virtual的类派生，尤其是标准容器等
+- 条款理解02： 如果一个类不含其他virtual函数，意味着它并不意图被用作一个base class， 千万不要为其声明virtual析构，带来的影响是：对象会有很客观膨胀，且于其他语言交互会出更多问题。同时，不要试图从不带virtual的类派生，尤其是标准容器等
 
 ## 条款 08: 别让异常逃离析构函数 (Prevent exceptions from leaving destructions.)
 
@@ -816,7 +816,7 @@ numTimesConsulted(0){ }
         FontHandle f;
     }
 
-    Font f(getFont());
+    FontV1 f(getFont());
     changeFontSize(f.get(), someSize); // 每次调用都要调用get
 
     // example 1: implicit转化
@@ -829,7 +829,7 @@ numTimesConsulted(0){ }
         FontHandle f;
     }
 
-    Font f(getFont());
+    FontV2 f(getFont());
     changeFontSize(f, someSize); // Font隐式转化为FontHandle
     ```
 
@@ -849,7 +849,7 @@ numTimesConsulted(0){ }
 
     AddressLine* pal = new AddressLine;
     ...
-    delete AddressLine;  // Dangerous
+    delete pal;  // Dangerous
     ```
 ## 条款 17: 以独立语句将newed对象置入智能指针（Use newed objeces in smart pointers in standalone statement)
 
@@ -860,7 +860,7 @@ numTimesConsulted(0){ }
     ...
     // bad example. what if: 
     // step1 new Widget; 
-    // step2 call ();-----> may throw exception ? 
+    // step2 call priority();-----> may throw exception ? 
     // step 3 construct of shared_ptr
     processWidget(std::shared_ptr<Widget>(new Widget), priority());
 
@@ -955,12 +955,12 @@ numTimesConsulted(0){ }
 ## 条款 19：设计class犹如设计type（Treat class design as type design）
 
 - 条款理解01： 你应该带着和“语言设计者当初设计语言内置类型时”一样谨慎的研讨class的设计：
-    - 新type的对象应该如何被创建和销毁？ 这回影响你的class的构造函数、析构函数、内存分配函数、内存释放函数等
+    - 新type的对象应该如何被创建和销毁？ 这会影响你的class的构造函数、析构函数、内存分配函数、内存释放函数等
     - 对象的初始化和赋值该有什么样的行为
     - 新type的对象如果被passed by value，意味着什么？ 即copy构造如何实现
     - 有哪些合法值
     - 继承图系(inheritance graph)
-    - 新的type需要什么样的转化？ 如果你希望类型T1之物被隐式转化为T2之物，那么必须在```class T1```中写一个类型转化函数```operator T2```或在```class T2```中写一个non-explicit-one-arguement
+    - 新的type需要什么样的转化？ 如果你希望类型T1之物被隐式转化为T2之物，那么必须在```class T1```中写一个类型转化函数```operator T2()```或在```class T2```中写一个non-explicit-one-arguement
     - 什么样的操作符和函数对此新type而言是合理的
     - 该如何取用成员
     - 什么是“未声明接口(undeclared interface)”
@@ -993,7 +993,7 @@ numTimesConsulted(0){ }
     bool validateStudent(Student s);
 
     // pass-by-reference-to-const效率高的多，没有多余的构造或者析构函数调用；不必考虑会修改入参
-    bool validateStudent(Student s);
+    bool validateStudent(const Student& s);
 
 
     class Window {
@@ -1026,7 +1026,7 @@ numTimesConsulted(0){ }
     prinNameAndDisplay(wwsb); 
     ```
 
-- 条款理解02： 内置类型、STL迭代器、函数对象的呢个，pass-by-value更合适。当然并不是绝对的，所有小型types都应该设计成pass-by-value
+- 条款理解02： 内置类型、STL迭代器、函数对象，pass-by-value更合适。当然并不是绝对的，所有小型types都应该设计成pass-by-value
 
 ## 条款 21：必须返回对象时，别妄想返回其reference(Don't try to return a reference when you must return an object)
 
@@ -1188,7 +1188,7 @@ numTimesConsulted(0){ }
         }
     }
     ```
-- 条款理解03：如果考虑到模板类，情况比较复杂：在你的class或者template所在的命名空间提供一个non-member swap， 并令其调用swap成员函数，并且建议std::swap版本也要提供(为那些使用std::swap的迷途程序员提供帮助)。
+- 条款理解03：如果考虑到模板类，情况比较复杂：在你的class或者template所在的命名空间提供一个non-member swap， 并令其调用swap成员函数，并且建议std::swap版本也要提供(为那些使用std::swap的迷途程序员提供帮助, 所谓迷途程序员指的是非要写std::swap(obj1, obj2)的人)。
     ```C++
     namespace WidgetStuff {
         ...
@@ -1214,6 +1214,168 @@ numTimesConsulted(0){ }
         swap(obj1, obj2); // 为T型别找最佳的swap（global或者T所属命名空间中的--> std命名空间中的）
     }
     ```
+
+## 5 实现 Implementations
+
+## 条款26： 尽可能延后变量定义式的出现时间 (Postpone variable definations as long as possible)
+
+- 条款理解01：尽可能延后变量定义式的出现。这样做可以增加程序的清晰度并改善程序效率。“尽可能延后的真正意义，不只应该延后变量的定义直到非得使用该变量的前一刻，甚至应该尝试延后这份定义直到能够给它处置实参为止，不仅能够避免构造和析构非必要对象，还可以避免无意义的default构造行为”。
+    ```c++
+    // bad example:
+    std::string encryptPassword(const std::string& password) {
+        using namespace std;
+        string encrypted;
+        // encrypted定义过早，如果抛出异常，它就没有真正被使用
+        if (password.length() < MimimumPasswordLength) {
+            throw logic_error("Password is too short");
+        }
+        ...
+        return encrypted;
+    }
+
+    // good example:
+        std::string encryptPassword(const std::string& password) {
+        using namespace std;
+        // encrypted定义过早，如果抛出异常，它就没有真正被使用
+        if (password.length() < MimimumPasswordLength) {
+            throw logic_error("Password is too short");
+        }
+        string encrypted;
+        ...
+        return encrypted;
+    }
+    ```
+- 条款理解02：关于循环的处理：如果变量只在循环体内使用，把它定义在循环外并在每次循环时赋值比较好还是直接定义在循环提内比较好。A：定义在循环体外，需要 1个构造+1个析构+N个赋值； B：定义在循坏体内，需要N个构造和N个析构。除非明确知道赋值比构造和析构成本低、正在处理代码中对效率高度敏感的部分，否则建议使用B方法，这样对程序的可理解性和维护性更优。
+
+## 条款27： 尽量少做转型操作 (Minimize casting)
+
+### 几种转型类型
+
+- C风格转型
+  
+  | 类型            | 描述                                      |
+  | --------------- | ----------------------------------------- |
+  | `(T)expression` | C风格旧式转型                             |
+  | `T(expression)` | C风格旧式转型（函数风格），跟上面并无差别 |
+
+- C++style转型  
+
+  | 类型               | 描述                                                                                                                                                                           |
+  | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | `const_cast`       | 常量性擦除(cast away the constness)，唯一有此功能的C++style转型                                                                                                                |
+  | `dynamic_cast`     | 安全向下转型(safe downcasting),它是唯一无法由旧式转型完成的动作，它式唯一可能耗费重大运行成本的转型操作， 安全的意思是会判断某对象是否是归属于继承体现中的某个类，而不是直接转 |
+  | `reinterpret_cast` | 执行低级转化，例如将point to int转化为int，除了在低级代码外很少见                                                                                                              |
+  | `static_cast`      | 强迫隐式转化，功能全面：将non-const转为const， 将int转为double，将void*转为typed指针，将pointer-to-base转为pointer-to-derived， 但无法将consy转为non-const                     |
+
+### 条款理解01
+- 条款理解01：宁可使用C++style类型转化，不要使用旧式转型。前者很容易辨识出来，而且由作用越明确、编译器等越可以提供诊断信息。
+   
+- 条款理解02：尽量避免转型操作，有一种误解式认为转型其实什么都没做。但是其实任何一个类型的转化往往真的令编译器编译出在运行期间执行的码
+    ```C++
+    int x, yl
+    ...
+    double d = static_cast<double>(x)/y; //肯定会生成一些代码，因为在计算机体系结构中，int和double有完全不同的底层表达
+
+    class Base {...};
+    class Derived: public Base {};
+    Derived d;
+    Base* p = &d; // 有时候p和d正真的地址并不一样，会有个偏移 
+    ```
+- 条款理解03：如果要在derived class中virtual函数中调用父类的对应函数，不应该使用转型,而应该使用域操作符。因为这样，其实是在当前对象的base class成分的副本上执行对应的方法!
+    ```C++
+    // bad example
+    class Window {
+    public:
+        virtual void onResize(){...}
+        ...
+    };
+    class SpecialWindow : public Window {
+    public:
+        virtual void onResize(){
+            static_cast<Window>(*this).onResize();
+            ...
+        }
+    }
+
+    // good example
+    class SpecialWindow : public Window {
+    public:
+        virtual void onResize(){
+            Window::onResize();
+            ...
+        }
+    }
+    ```
+- 条款理解04：应当尽可能避免dynamic_cast，因为dynamic_cast的需要实现版本执行速度都相当慢。之所需需要dynamic_cast，是因为想在你认定是derived class对象身上执行derived class操作函数。 使用类型安全容器和将virtual函数往继承上方移动即让基类也增加相关的操作函数（该函数可以什么人都不做）可以避免这种场景。
+- 条款05：绝对避免一连串的dynamic_cast!!!
+    ```C++
+        class Window { ... };
+        class SpecialWindow1 : public Window{ ... };
+        class SpecialWindow2 : public Window{ ... };
+        ...
+        typedef vector<shared_ptr<Window> > VPN;
+        VPN winPtrs;
+
+        for (VPN::iterator itr = winPtrs.begin(); itr != winPtrs.end(); ++itr) {
+            if (SpecialWindow1* psw1 = dynamic_cast<SpecialWindow1*>(itr->get())) {
+                ...
+            } else if (SpecialWindow1* psw2 = dynamic_cast<SpecialWindow2*>(itr->get())) {
+                ...
+            }
+            ...
+        }
+    ```
+
+- 条款06：优秀的C++代码很少使用转型，但是如果说要完全拜托不切实际，但是如果必须要做，尽可能的隔离起来，隐藏在某个函数内。
+    
+## 条款28： 避免返回handles指向对象内部成分 (Avoid returning "handles" to object internals)
+
+- 条款理解01：Reference、指针、迭代器等都是所谓的handles，返回一个代表内部数据的handle会导致对象封装性的降低，导致const成员函数不像成员函数。
+    ```C++
+    class Point {
+    public:
+        Point(int x, int y);
+        ...
+        void SetX(int x);
+        void SetY(int y);
+        ...
+    };
+
+    class RectData {
+        Point ulhc;
+        Point lrhc;
+    }
+
+    class Rectangle {
+        Point& upperLeft() const {return pData->ulhc;} // error!
+        Point& lowerRight() const {return pData->lrhc;}
+    private:
+        shard_ptr<RectData> pData; 
+    }
+    ...
+
+    const Rectangle rec(xx, yy);
+    rec.upperLeft.setY(50); 
+    ```
+
+- 条款理解02：即使对这些返回值加了const也不行，也会导致dangling handles。
+    ```C++
+    class GUIObject{...};
+    const Rectangle boundingBox(const GUIObject& obj);
+
+    GUIObject obo(...);
+    const Point* pUpperLeft = &(boundingBox(obo).upperLeft()); // boundingBox(obo) creat a temp Rectangle and will destroy later.
+    ```
+- 条款理解03：避免返回handles指向对象内部。这样可以增加封装性，使得const成员函数的行为像个const，并将dangling handles的可能性降到最低。这并不意味这绝对不能这么做，有时候必须那么做，但这毕竟是例外，不是常态。
+    ```C++
+    class GUIObject{...};
+    const Rectangle boundingBox(const GUIObject& obj);
+
+    GUIObject obo(...);
+    const Point* pUpperLeft = &(boundingBox(obo).upperLeft()); // boundingBox(obo) creat a temp Rectangle and will destroy later.
+    ```
+
+## 条款29： 为“异常安全”而努力是值得的(Strive for exception-safe code)
 
 ## 附录 运算符顺序
 | 运算符                          | 结合性     |
