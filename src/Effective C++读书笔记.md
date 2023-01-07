@@ -1367,15 +1367,508 @@ numTimesConsulted(0){ }
     const Point* pUpperLeft = &(boundingBox(obo).upperLeft()); // boundingBox(obo) creat a temp Rectangle and will destroy later.
     ```
 - 条款理解03：避免返回handles指向对象内部。这样可以增加封装性，使得const成员函数的行为像个const，并将dangling handles的可能性降到最低。这并不意味这绝对不能这么做，有时候必须那么做，但这毕竟是例外，不是常态。
-    ```C++
-    class GUIObject{...};
-    const Rectangle boundingBox(const GUIObject& obj);
+ 
+## 条款29： 为“异常安全”而努力是值得的(Strive for exception-safe code)
 
-    GUIObject obo(...);
-    const Point* pUpperLeft = &(boundingBox(obo).upperLeft()); // boundingBox(obo) creat a temp Rectangle and will destroy later.
+### 基本概念
+- “异常安全性的两个条件”：
+  - 不泄露任何资源，包括内存。mutex等.可以使用RAII解决资源泄露
+  - 不允许数据被破坏。考虑如果new抛出异常，原始数据是否被破坏
+    ```c++
+    // bad example
+    class PrettyMenu {
+    public:
+        ...
+        void changeBackGroud(std::istream& imgSrc);
+        ...
+    private:
+        Mutex mutex;
+        Image* bgImage;
+        int imageChanges;
+    }
+
+    void PrettyMenu::changeBackGroud(std::istream& imgSrc) {
+        lock(&mutex); // This will lead resource leak!
+        delete bgImage;
+        ++imageChanges;
+        bgImage = new Image(imgSrc); // What if new throw exception?
+        unlock(&mutex);
+
+    }
+    ```
+- “异常安全函数的三类保证”，一般而言我们想提供“强烈保证”：
+  - 基本承诺：如果异常被抛出，程序内的任何事物都在有效状态下，没有任何对象或数据结构因此破坏。
+  - 强烈保证：如果异常被抛出，程序状态不改变。如果函数成功，就是完全成功；如果函数失败，程序就会回到调用之前的状态
+  - 不抛掷承诺（no throw），承诺绝不抛出异常，总是能够完成原先承诺的功能，作用于内置类型身上的所有操作都提供nothrow保证。注意，带着空白的异常明细的函数`int doSomething() throw()`并不是说绝不抛异常，它没有提供任何异常保证
+
+### 条款理解
+
+- 条款理解01：利用智能指针、函数语句重排等手段提供异常安全性。但是这也仅仅是提供了基本承诺，因为可能输入流的读取记号已被移走
+    ```c++
+    class PrettyMenu {
+    public:
+        ...
+        void changeBackGroud(std::istream& imgSrc);
+        ...
+    private:
+        Mutex mutex;
+        shared_ptr<Image> bgImage;
+        int imageChanges;
+    };
+
+    void PrettyMenu::changeBackGroud(std::istream& imgSrc) {
+        Lock m1(&mutex);
+        bgImage.reset(new Image(imgSrc));
+        ++imageChanges;
+    }
+    ```
+- 条款理解02：copy and swap这个一般化的策略会提供强烈保证：为你打算修改的对象做出一份副本，然后再那副本上做一切必要的修改。若任何修改动作抛出异常，原对象仍然保持未改变状态。待所有改变都成功后，再将修改过的副本和原对象在一个不抛出异常的swap函数中置换。实现上通常使用pimp惯用法
+    ```C++
+    struct PMImpl {
+        shared_ptr<Image> bgImage;
+        int imageChanges;
+    };
+    class PrettyMenu {
+        ...
+    private:
+        Mutex mutex;
+        shared_ptr<PMImpl> pImpl;
+    };
+
+    void PrettyMenu::changeBackGroud(std::istream& imgSrc) {
+        using std::swap;
+        Lock m1(&mutex);
+        shared_ptr<PMImpl> pNew(new PMImpl(*pImpl));
+        pNew->bgImage.reset(new Image(imgSrc));
+        ++pNew->imageChanges;
+        swap(pImpl, pNew);
+    }
+    ```
+- 条款理解03：函数提供的“异常安全性保证”通常只等于其所调用之各个函数的“异常安全保证”中的最弱者
+
+## 条款30： 透彻了解*inlining*的里里外外(Understand the ins and outs of inlining)
+
+### 基本概念
+
+- inline函数的好处：不蒙受函数调用所招致的额外开销，并且便于编译器优化
+- 缺点：可能会增加object code的大小，进一步降低高速缓冲装置的击中率，进而影响效率
+- inline只是对编译器的申请，不是强制命令。这项申请可以隐式提出（将函数定义在class定义式内，包括成员函数和friend），也可以显式提出（使用`inline`关键字）
+    ```c++
+    template<typename T>
+    inline const T& std::max(const T& a, const T& b){
+        return a < b ? b : a;
+    }
+    ```
+- inline通常一定被置于头文件中，因为在编译过程中需要将函数调用替换为函数本体，编译器必须知道函数本体，大部分环境中inline式编译器行为
+- template的具现化予inline无关。如果你认为所有根据此template具现出来的函数都应该式inline，请将此template声明为inline。二者没有什么必然的连接
+- inline只是对编译器的申请，但是编译器可以忽略，例如对virtual的调用会使inlining落空。目前大部分编辑器如果无法将函数inline化，会给警告信息。同时，编译器通常不对通过函数指针而进行的调用实时inlining
+- 构造函数和洗头函数往往不适合作为inline，会导致代码膨胀
+- 必须评估将函数声明为inline的冲击，inline函数如果要变化，需要将所有客户端代码重编，而不只是重新连接
+
+### 条款理解
+
+- 将inlining限制到小型、且被频繁调用的函数身上，这使得日后的调试和二进制升级更容易，也使得潜在的代码膨胀问题最小化，使程序的速度提升机会最大化
+- 不要只因为funtion template出现在头文件中，就将它声明为inline
+
+## 条款31： 将文件间的编译依存关系降至最低
+
+### 3个简单的策略：
+- 如果使用object references或者object pointers就可以完成任务，就不要使用objects。
+- 如果能够，尽量以class声明式替换class定义式：当你声明一个函数而它用到某个class时，并不需要该class的定义：纵使函数以by value方式传递参数
+- 为声明式和定义式提供不同的头文件
+    ```c++
+    #include "datefwd.h" // 这个头文件中前置声明class Date，但不定义
+    Data today();
+    void clearAppointments(Date d);
     ```
 
-## 条款29： 为“异常安全”而努力是值得的(Strive for exception-safe code)
+### 条款理解
+
+- 条款理解01：使用pimp或者叫Handle classes降低编译依存关系
+    ```C++
+    // Person的定义式，即Person.h
+    #include <sring>
+    #include <memory>
+
+    class PersonImpl;
+    class Date;
+    class Address;
+    class Person {
+    public:
+        Person(const string& name, const Date& birthday, const Address& addr);
+        string name() const;
+        string birthDate() const;
+        string address() const;
+        ...
+    private:
+        shared_ptr<PersonImpl> pImpl;
+    }
+
+    ....
+    // 函数的实现
+    #include "Person.h"
+    #include "PersonImpl.h"
+
+    Person::Person(const string& name, const Date& birthday, const Address& addr) : pImple(new PersonImpl(name, birthday, addr)) {}
+
+    string Person::name() const {
+        return pImple->name();
+    }
+    ```
+- 条款理解02：另一种实现Handle classes的方式是Interfaces class。利用抽象基类和工厂factory函数（virtual构造函数），解除接口和实现之间的耦合关系。
+    ```c++
+    // Person.h
+    #pragma once
+    #include<string>
+    #include<memory>
+    using namespace std;
+    class Person {
+    public:
+        Person() = default;
+        virtual ~Person() {};
+        virtual string name() const = 0;
+        virtual string birthDate() const = 0;
+        virtual string address() const = 0;
+        static shared_ptr<Person> create(const string& name, const string& birthDay, const string& addr);
+    };
+
+    // RealPerson.h
+    #pragma once
+    #include"Person.h"
+    class RealPerson : public Person {
+    public:
+        RealPerson(const string& name, const string& birthDay, const string& addr)
+        : theName(name), theBirthDate(birthDay), theAddress(addr){}
+        virtual ~RealPerson() {}
+        string name() const { return theName; }
+        string birthDate() const { return theBirthDate; }
+        string address() const { return theAddress; }
+    private:
+        string theName, theBirthDate, theAddress;
+    };
+
+    // Person.cpp
+    #include "Person.h"
+    #include "RealPerson.h"
+    shared_ptr<Person> Person::create(const string& name, const string& birthDay, const string& addr) {
+        bool someCondition = true;
+        //...
+        if (someCondition) {
+            return shared_ptr<Person>(new RealPerson(name, birthDay, addr));
+        }
+        return nullptr;
+    }
+
+    //业务代码
+    #include "Person.h"
+    #include <iostream>
+
+    int main()
+    {
+        std::cout << "Hello World!\n";
+        shared_ptr<Person> p = Person::create("Wang", "2022.1.1", "Hubei");
+        cout << p->name() << endl;
+    }
+    ```
+
+## 6 继承与面向对象设计 Inheritance and Object-Oriented Design
+
+## 条款32： 确定你的public继承是is-a关系(Make sure public inheritance model "is a")
+
+- 条款理解01：“public继承”意味这is-a。 适用于base classes身上的每件事也一定适用于derived classes（里氏替换原则），每一个derived class对象也是一个base class。反之并不成立。于是，在C++中，任何函数如果期望获得一个类型为Person的实参（或者pointer-to-Person或者reference-to-Person），都愿意接受一个Student对象（或pointer-to-Student或reference-to-Student）
+    ```c++
+    class Person {...};
+    class Student : public Person {...};
+    void eat(const Person& p);
+    void study(const Student& s);
+    Person P;
+    Student s;
+    eat(p);
+    eat(s);
+    study(s);
+    study(p); // ERROR!
+    ```
+- 条款理解02：有时候你的生活直觉会误导你：
+  - 典型的误导场景1：企鹅penguin是一种鸟，鸟都可以飞，但是鸟不会飞。解决思路是：1.承认有些鸟不会飞，有些鸟会飞，进行双classes设计； 或者2、通过抛出异常或者不实现成员函数的方法，在运行期或者编译器侦测到错误
+  - 典型的误导场景2：正方形是矩形，那么`class Square`是否应该以public继承`class Rectangle` ?答案是否定的，可以独立的施加于矩形的操作（单独地调整长和宽）无法直接施加于正方形
+- 条款理解03：世界上不存在“完美设计”，只存在“最佳设计”：取决于系统希望做什么事，包括现在和未来。如果你不打算关注鸟的飞行行为，那么不用区分会飞的鸟和不会飞的鸟。
+
+## 条款33： 避免遮掩而来的名称(Avoid hiding inherited names)
+
+### 基本概念
+
+- C++名称遮掩：C++名称遮掩的唯一规则是：名称遮掩，不会关注名称是否是相同或者不同类型。如下例子中x是`SomeFunc`作用域内的`double x`。
+    ```C++
+    int x;
+    void SomeFunc() {
+        double x;
+        std::cin >> x;
+    }
+    ```
+    ```txt
+    +-------------------------------------+
+    |Global scope                         |
+    |x          +-----------------------+ |
+    |           |  SomeFunc's scope     | |
+    |           |  x                    | |
+    |           |                       | |
+    |           |                       | |
+    |           +-----------------------+ |
+    +-------------------------------------+
+    ```
+- 在涉及到继承时，derived class的作用域嵌套在base class内，当寻找某个名称合适的类型，总是"从内到外"依次寻找
+    ```C++
+    class Base {
+    private:
+        int x;
+    public:
+        virtual void mf1() = 0;
+        virtual void mf2();
+        void mf3();
+        ...
+    };
+
+    class Derived: public Base {
+    public:
+        virtual void mf1();
+        void mf4();
+        ...
+    };
+    ```
+    ```txt
+    +--------------------------------------------------------+
+    |Base's scope:                                           |
+    |x                                                       |
+    |mf1                                                     |
+    |mf2                                                     |
+    |mf3                     +-------------------------------+
+    |                        |Derived’s scope:              ||
+    |                        |mf1                           ||
+    |                        |mf2                           ||
+    +--------------------------------------------------------+
+    ```
+- 在涉及到继承时并在存在函数重载并且又希望覆写其中一部分，会出现Base中的名称被遮掩的情况。这是C++对继承而来的名称的缺省遮掩行为
+    ```c++
+    class Base {
+        public:
+        virtual void mf1() = 0;
+        virtual void mf1(int){}
+        virtual void mf2(){}
+        void mf3(){}
+        void mf3(double){}
+    };
+
+    class Derived : public Base {
+        public:
+        virtual void mf1(){}
+        void mf3(){}
+        void mf4(){}
+    };
+
+    int main() {
+        Derived d;
+        d.mf1();
+        int x = 5;
+        d.mf1(5); // Compile Error
+        d.mf3(5); // Compile Error
+    }
+    ```
+### 条款理解
+
+- 条款理解01：derived classes中的名称会遮掩base class中的名称。尤其在public继承下没人希望如此，可以通过`using`声明导入Base作用域内所有的名称来解决该问题
+    ```c++
+    class Base {
+        public:
+        virtual void mf1() = 0;
+        virtual void mf1(int){}
+        virtual void mf2(){}
+        void mf3(){}
+        void mf3(double){}
+    };
+
+    class Derived : public Base {
+        public:
+        using Base::mf1;
+        using Base::mf3;
+        virtual void mf1(){}
+        void mf3(){}
+        void mf4(){}
+    };
+
+    int main() {
+        Derived d;
+        d.mf1();
+        int x = 5;
+        d.mf1(5); // It's OK  now.
+        d.mf3(5); // It's OK  now.
+    }
+    ```
+- 条款理解02：在private继承等场景下，如果不想使得继承Base作用域内的所有名称都可见，可以适用转发函数（forwarding function）
+    ```C++
+    class Base {
+        public:
+        void mf3(){}
+        void mf3(double){}
+    };
+
+    class Derived : private Base {
+        public:
+        void mf3(){
+            Base::mf3();
+        }
+
+    };
+
+    int main() {
+        Derived d;
+        d.mf3();
+        d.mf3(5); // Compile Error!
+    }
+    ```
+
+## 条款34： 区分接口继承和实现继承(Differentiate between inheritance of interface and inheritance of implementation.)
+
+- 条款理解01：成员函数的接口总会被继承
+    ```c++
+    class Shape {
+    public:
+        virtual void draw() const = 0;
+        virtual void error(const std::string &msg);
+        int object( ) const;
+        ...
+    };
+    class Rectangle: public Shape{...};
+    class Ellipse: public Shape{...};
+    ```
+- 声明一个virtual函数的目的就是为了让derived classes只继承函数接口:
+- 声明简朴的非纯impure virtual函数的目的就是让derived classe继承该函数的接口和**缺省实现**：你必须支持某接口，如果你不想自己实现可以使用缺省版本。但是这种实现可能造成危险，因为这里缺少“**只有在明确要求的情况下使用缺省版本**”的强制性，可能导致新派生的子类默认使用了父类的缺省实现而不自治。针对该痛点的解决办法又两个：
+    - 以不同的函数分别提供接口和默认实现
+      ```c++
+      class Airplane {
+      public:
+            virtual void fly(const Airport& destination) = 0;
+        ...
+      protected:
+            void defaultFly(const Airport& destination);
+        ...
+      };
+      void Airplane::defaultFly(const Airport& destination){
+        ...// default method
+      };
+
+      class ModelA : public Airplane {
+      public:
+            virtual void fly(const Airport& destination){
+                defaultFly(destination);
+            }
+      };
+
+      class ModelB : public Airplane {
+      public:
+            virtual void fly(const Airport& destination){
+                defaultFly(destination);
+            }
+      };
+      ```
+    - pure virtual函数必须在derived classes中重新声明，但是他们自己也可以拥有自己的实现。跟第一种方式相比，只是避免了过度雷同的函数名称引起的命名空间的污染
+      ```c++
+      class Airplane {
+      public:
+            virtual void fly(const Airport& destination) = 0;
+        ...
+      };
+      void Airplane::fly(const Airport& destination){
+        ...// pure virtual可以拥有自己的实现
+      };
+
+      class ModelA : public Airplane {
+      public:
+            virtual void fly(const Airport& destination){
+                Airplane::fly(destination);
+            }
+      };
+
+      class ModelB : public Airplane {
+      public:
+            virtual void fly(const Airport& destination){
+                Airplane::fly(destination);
+            }
+      };
+      ```
+
+- 声明non-virtual函数的目的是为了让derived class继承函数的接口以及一份强制性实现,即任何derived class都不应该尝试改变。
+
+## 条款35： 考虑virtual函数以外的其他选择(Consider alnatives to virtual functions)
+- 条款理解01：成员函数的接口总会被继承
+    ```c++
+    class Shape {
+    public:
+        virtual void draw() const = 0;
+        virtual void error(const std::string &msg);
+        int object( ) const;
+        ...
+    };
+    class Rectangle: public Shape{...};
+    class Ellipse: public Shape{...};
+    ```
+- 声明一个virtual函数的目的就是为了让derived classes只继承函数接口:
+- 声明简朴的非纯impure virtual函数的目的就是让derived classe继承该函数的接口和**缺省实现**：你必须支持某接口，如果你不想自己实现可以使用缺省版本。但是这种实现可能造成危险，因为这里缺少“**只有在明确要求的情况下使用缺省版本**”的强制性，可能导致新派生的子类默认使用了父类的缺省实现而不自治。针对该痛点的解决办法又两个：
+    - 以不同的函数分别提供接口和默认实现
+      ```c++
+      class Airplane {
+      public:
+            virtual void fly(const Airport& destination) = 0;
+        ...
+      protected:
+            void defaultFly(const Airport& destination);
+        ...
+      };
+      void Airplane::defaultFly(const Airport& destination){
+        ...// default method
+      };
+
+      class ModelA : public Airplane {
+      public:
+            virtual void fly(const Airport& destination){
+                defaultFly(destination);
+            }
+      };
+
+      class ModelB : public Airplane {
+      public:
+            virtual void fly(const Airport& destination){
+                defaultFly(destination);
+            }
+      };
+      ```
+    - pure virtual函数必须在derived classes中重新声明，但是他们自己也可以拥有自己的实现。跟第一种方式相比，只是避免了过度雷同的函数名称引起的命名空间的污染
+      ```c++
+      class Airplane {
+      public:
+            virtual void fly(const Airport& destination) = 0;
+        ...
+      };
+      void Airplane::fly(const Airport& destination){
+        ...// pure virtual可以拥有自己的实现
+      };
+
+      class ModelA : public Airplane {
+      public:
+            virtual void fly(const Airport& destination){
+                Airplane::fly(destination);
+            }
+      };
+
+      class ModelB : public Airplane {
+      public:
+            virtual void fly(const Airport& destination){
+                Airplane::fly(destination);
+            }
+      };
+      ```
+
+- 声明non-virtual函数的目的是为了让derived class继承函数的接口以及一份强制性实现,即任何derived class都不应该尝试改变。
+
 
 ## 附录 运算符顺序
 | 运算符                          | 结合性     |
