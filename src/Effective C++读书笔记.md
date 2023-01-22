@@ -1799,76 +1799,233 @@ numTimesConsulted(0){ }
 - 声明non-virtual函数的目的是为了让derived class继承函数的接口以及一份强制性实现,即任何derived class都不应该尝试改变。
 
 ## 条款35： 考虑virtual函数以外的其他选择(Consider alnatives to virtual functions)
-- 条款理解01：成员函数的接口总会被继承
+
+### 基本概念
+- NVI手法：Non-Virtual Interface，就是令客户通过public non-virtual成员函数调用private virtual函数。它是所谓的**Template Method设计模式**的独特表现形式。NVI的优点是：可以在调用virtual函数之前做一些事前和事后的工作，即可以控制在合适的地方调用。它允许dirived class重新定义virtua函数，从而赋予“如何实现机能”的控制能力，但是base class保留“何时调用”的能力。如下的例子中，是一个游戏中人物的设计，每种人物可能有不同的计算健康值的诉求：
+    ```C++
+    class GameCharacter {
+    public:
+    int healthValue() const {
+        // do some pre thing... 
+        int retVal = doHealthValue();
+        //do some post thing...
+        return retVal;
+    }
+    private:
+        virtual int doHealthValue() const{
+            return 42;
+        }
+    };
+    class EvilBadGuy:public GameCharacter {
+        private:
+            // Derived can re-define it if necessary
+            virtual int doHealthValue() const {
+                return 5;
+            }
+    };
+    int main() {
+        GameCharacter *p = new EvilBadGuy();
+        cout << p-> healthValue() << endl;
+        delete p;
+    }
+    ```
+- Template Method设计模式：Template Method is a behavioral design pattern that defines the skeleton of an algorithm in the superclass but lets subclasses override specific steps of the algorithm without changing its structure.（定义一个操作中算法的骨架，而将一些操作延迟到子类中。TemplateMethod使得子类可以不改变一个算法的结构，即可重定义该算法的某些特定步骤。）
+- Strategy设计模式：Strategy is a behavioral design pattern that turns a set of behaviors into objects and makes them interchangeable inside original context object.（在策略模式（Strategy Pattern）中，一个类的行为或其算法可以在运行时更改。这种类型的设计模式属于行为型模式。）
+- 借由Funtion Pointers实现Strategy模式：还是刚才GameCharacter的例子，我们可以要求每个人物的构造函数接受一个指针，指向一个健康值计算函数，而我们可以调用该函数进行实际计算。这样可以达到更灵活的能力：同一人物类型的不同对象可以拥有不同的健康值计算函数，某已知人物对象的计算函数还可以动态调整：
+    ```c++
+    class GameCharacter;
+    int defaultHealthCalc(const GameCharacter& gc );
+    class GameCharacter {
+    public:
+        typedef int (*HealthCalcFunc)(const GameCharacter& );
+        explicit GameCharacter(HealthCalcFunc hcf = defaultHealthCalc): healthFunc(hcf) {}
+        int healthValue() const {
+            return healthFunc(*this);
+        }
+        void sethealthFunc(HealthCalcFunc hcf) {
+            healthFunc = hcf;
+        }
+    private:
+        HealthCalcFunc healthFunc;
+    };
+
+    class EvilBadGuy : public GameCharacter {
+    public:
+        explicit EvilBadGuy(HealthCalcFunc hcf = defaultHealthCalc) : GameCharacter(hcf) {}
+        //...
+    };
+
+    int loseHealthQuickly(const GameCharacter& gc );
+    int loseHealthSlowly(const GameCharacter& gc );
+    // ...
+    EvilBadGuy dbg1(loseHealthQuickly);
+    EvilBadGuy dbg2(loseHealthSlowly);
+    // ...
+    dbg1.sethealthFunc(loseHealthSlowly);
+    ```
+- 借由std::function完成Strategy模式:就是将上述中的函数指针改为std::function对象，这样：完成健康值计算函数的就不一定必须是函数指针，还可以是仿函数对象、lambda表达式等。
+- 传统的Strateg模式：传统的Strateg模式将会把健康值计算函数做成一个单独的继承体系中的virtual成员函数：GameCharacter是一个继承体系的根，HealthCalcFunc是另一个继承体系的根，每一个GameCharacter对象都含有一个指针指向一个HealthCalcFunc体系的对象
+    ```txt
+                    +-----------------------+        +----------------+
+                    |   GameCharacter       |        |HealthCalcFunc  |
+                    |                       <--------+                |
+                    +----------^------------+        +------^---------+
+                               |                            |
+                               |                            |
+                               |                            |
+                               |                            |
+   +-----------------------+---+              +----------+--+--------------------+
+   |  EviBadGuy            |   |              SlowHealth |        |QuickHealthLoser
+   |                       |   |              +----------+        +--------------+
+   +-----------------------+   |
+                               |
+                               |
+                     +---------+---------+
+                     |EyeCandyCharacter  |
+                     +-------------------+
+
+    ```
+    ```C++
+    class GameCharacter;
+    class HealthCalcFunc {
+    public:
+        virtual int calc(const GameCharacter& gc) const {
+            //...
+        }
+    }
+    HealthCalcFunc defultFunc;
+    class GameCharacter {
+    public:
+        explicit GameCharacter(HealthCalcFunc* phcf = &defaultHealthCalc): pHealthFunc(phcf) {}
+        int healthValue() const {
+            return pHealthFunc->cals(*this);
+        }
+        void sethealthFunc(HealthCalcFunc* phcf) {
+            pHealthFunc = phcf;
+        }
+    private:
+        HealthCalcFunc *pHealthFunc;
+    };
+    ```
+### 条款理解：
+
+- 这个世界还有其他许多道路，值得我们花时间研究
+- NVI是Template Method设计模式的一种特殊形式，有其独特的优势
+- 将virtual函数替换为函数指针类型的成员变量，这是Strategy设计模式的一种表现形式；使用std::function替换函数指针类型将提升更多灵活性
+- 传统的Strateg模式，将继承体系中的virtual函数替换为另一个继承体系的指针
+  
+## 条款36： 绝不重新定义继承而来的non-virtual函数(Never redefine an inherited non-vitrual function)
+
+### 基本概念
+
+- non-virtual函数是静态绑定，而virtual函数是动态绑定。所谓动态绑定，可以直接理解为：使用基类指针指向子类对象，当通过基类指针调用成员函数，会真正地的调用对应子类的成员函数，
+
+### 条款理解
+
+- 任何情况下都不要重新定义一个继承而来的non-virtual函数。
+
+## 条款37： 绝不重新定义继承而来缺省参数值(Never redefine a function's inherited default parameter value)
+
+### 基本概念
+
+- 静态类型：所谓静态类型，就是程序中被声明时所采用的类型。如下面程序中，ps/pc/pr的静态类型都是`Shape*`。
     ```c++
     class Shape {
     public:
-        virtual void draw() const = 0;
-        virtual void error(const std::string &msg);
-        int object( ) const;
+        enum ShapeColor {Red, Green, Blue};
+        virtual void draw{ShapeColor color = Red} const = 0;
         ...
     };
-    class Rectangle: public Shape{...};
-    class Ellipse: public Shape{...};
+
+    class Rectangle : public Shape {
+        public:
+        // draw has defferent default parameter value, damn.
+        virtual void draw(ShapeColor color = Green) const;
+        ...
+    };
+
+    class Circle : public Shape {
+        public:
+        virtual void draw(ShapeColor color) const;
+        ...
+    };
+
+    Shape *ps;
+    Shape *pc = new Circle();
+    Shape *pr = new Rectangle();
     ```
-- 声明一个virtual函数的目的就是为了让derived classes只继承函数接口:
-- 声明简朴的非纯impure virtual函数的目的就是让derived classe继承该函数的接口和**缺省实现**：你必须支持某接口，如果你不想自己实现可以使用缺省版本。但是这种实现可能造成危险，因为这里缺少“**只有在明确要求的情况下使用缺省版本**”的强制性，可能导致新派生的子类默认使用了父类的缺省实现而不自治。针对该痛点的解决办法又两个：
-    - 以不同的函数分别提供接口和默认实现
-      ```c++
-      class Airplane {
-      public:
-            virtual void fly(const Airport& destination) = 0;
+- 动态类型：动态类型则是指“目前所指对象的类型”。pc的动态类型是`Circle*`,pr的动态类型是`Rectangle*`
+- virtual函数系动态绑定，调用一个cirtual函数时究竟调用哪一份函数实现代码。取决于动态类型。 
+- virtual函数是动态绑定，但是缺省参数却是静态绑定，如果调用`pr->draw()`时调用的是`Rectangle::draw()`但使用的参数却是`Red`即base class指定的默认参数
+
+### 条款理解
+
+- 绝对不要重新定义一个继承而来的缺省参数值，因为缺省参数值都是静态绑定，但是virtual函数却是动态绑定的
+- 但是如果你遵循规则，又会出现重复代码并且相依性，如果base class的缺省值变了，所有“重复给定缺省参数值”的derived classes也必须改变
+    ```c++
+    class Shape {
+    public:
+        enum ShapeColor {Red, Green, Blue};
+        virtual void draw{ShapeColor color = Red} const = 0;
         ...
-      protected:
-            void defaultFly(const Airport& destination);
+    };
+
+    class Rectangle : public Shape {
+        public:
+        // draw has defferent default parameter value, damn.
+        virtual void draw(ShapeColor color = Red) const;
         ...
-      };
-      void Airplane::defaultFly(const Airport& destination){
-        ...// default method
-      };
-
-      class ModelA : public Airplane {
-      public:
-            virtual void fly(const Airport& destination){
-                defaultFly(destination);
-            }
-      };
-
-      class ModelB : public Airplane {
-      public:
-            virtual void fly(const Airport& destination){
-                defaultFly(destination);
-            }
-      };
-      ```
-    - pure virtual函数必须在derived classes中重新声明，但是他们自己也可以拥有自己的实现。跟第一种方式相比，只是避免了过度雷同的函数名称引起的命名空间的污染
-      ```c++
-      class Airplane {
-      public:
-            virtual void fly(const Airport& destination) = 0;
+    };
+    ```
+- 如果遭遇这种麻烦，可以建议使用NVI进行优化设计
+    ```C++
+    class Shape {
+    public:
+        enum ShapeColor {Red, Green, Blue};
+        void draw(ShapeColor color = Red) {
+            doDraw(color);
+        };
         ...
-      };
-      void Airplane::fly(const Airport& destination){
-        ...// pure virtual可以拥有自己的实现
-      };
+    private：
+        virtual void doDraw(ShapeColor color) const = 0;
+    };
 
-      class ModelA : public Airplane {
-      public:
-            virtual void fly(const Airport& destination){
-                Airplane::fly(destination);
-            }
-      };
+    class Rectangle : public Shape {
+        public:
+        ...
+        private：
+        virtual void doDraw(ShapeColor color);
+    };
 
-      class ModelB : public Airplane {
-      public:
-            virtual void fly(const Airport& destination){
-                Airplane::fly(destination);
-            }
-      };
-      ```
+    class Circle : public Shape {
+        public:
+        ...
+        private：
+        virtual void doDraw(ShapeColor color);
+    };
+    ```
 
-- 声明non-virtual函数的目的是为了让derived class继承函数的接口以及一份强制性实现,即任何derived class都不应该尝试改变。
+## 条款38： 通过复合塑模出has-a或“根据某物实现出”(Model "has a" or "is-implemented-in-terms-of" through composition)
 
+## 基本概念
+
+- 复合： 复合（composition）是一种类型之间的关系。当某种类型的对象内部含其他种类型的对象，便是这种关系。复合有很多同义词，例如：layering（分层）、containment（内含）、aggregation（聚合）、embedding（内嵌）
+    ```C++
+    class Address{...};
+    class PhoneNumber{...};
+
+    class Person {
+    public:
+        ...
+    private:
+        std::string name; //合成之物
+        Address address;
+        PhoneNumber voiceNumber;
+        PhoneNumber foxNumber;
+    }
+    ```
+- 当复合发生于应用域对象之间，就是has-a关系，如果发生在实现域，则是表现is-implemented-in-terms-of。上述的`Person`和`Address`就是has-a的关系。
+- 因为要节省空间，所以考虑从list实现一个set类型。因为考虑条款32的要求，不合适使用继承。正确的做法
 
 ## 附录 运算符顺序
 | 运算符                          | 结合性     |
@@ -1970,3 +2127,4 @@ int main()
     return 0;    
 }
 ```
+
