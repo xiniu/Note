@@ -2025,7 +2025,395 @@ numTimesConsulted(0){ }
     }
     ```
 - 当复合发生于应用域对象之间，就是has-a关系，如果发生在实现域，则是表现is-implemented-in-terms-of。上述的`Person`和`Address`就是has-a的关系。
-- 因为要节省空间，所以考虑从list实现一个set类型。因为考虑条款32的要求，不合适使用继承。正确的做法
+- 如果因为要节省空间，考虑从list实现一个set类型，应该如何实现呢。因为考虑条款32的要求，不适合使用继承。正确的做法是从list实现出Set对象
+    ```C++
+    template<class T>
+    class Set {
+    public:
+        bool member(const T& item) const;
+        void insert(const T& item);
+        void remove(const T& item);
+        std::size_t size() const;
+    private:
+        std::<list> rep;
+    };
+
+    template<class T>
+    bool Set<T>::member(const T& item) const {
+        return std::find(rep.begin(), rep.end(), item) !=  rep.end();
+    }
+
+    template<class T>
+    void Set<T>::insert(const T& item) {
+        if (!member(item)){
+            rep.push_back(item);
+        }
+    }
+
+    template<class T>
+    void Set<T>::remove(const T& item) {
+        auto it = std::find(rep.begin(), rep.end(), item);
+        if (it != rep.end()){
+            rep.erase(it);
+        }
+    }
+    template<class T>
+    size_t Set<T>::size() {
+        return rep.size();
+    }
+    ```
+## 条款理解 
+
+- 当复合发生于应用域对象之间，就是has-a关系，如果发生在实现域，则是表现is-implemented-in-terms-of，即根据某物实现出。复合与public继承完全不同
+
+## 条款39： 明智而审慎地使用private继承(Use private inheritance judiciously)
+
+## 基本概念
+
+- private继承并不意味着is-a关系。如果classes之间的继承关系是private，编译器不会自动将一个derived class对象转化为base class对象； 通过private继承而来的所有成员，在derived class中都会变为private属性。
+- private继承纯粹只是一种实现技术，意味着implemented-in-terms-of（根据某物实现出）。如果你让class D以private继承class B，你的用意是为了使用class B中已经备妥的特性，不是因为B和D存在任何观念上的关系。复合的意义也是implemented-in-terms-of，那么如何取舍-----优先使用复合，必要时才使用private继承。
+- 使用private继承的场景1：当两者之间的关系是implemented-in-terms-of，但是derived class想访问base class的protected成分或者是想重新定义virtual函数。例如，我们想设计一个类，这个类能周期性的审查自己的数据（例如成员函数被调用了多少次值类的）。我们发现有一个定时器类，其中的定时滴答函数是个虚函数，而我们刚好可以重新定义该虚函数。可以利用private继承实现
+    ```C++
+    class Timer {
+    public:
+        explicit Timer(int tickFrequency);
+        virtual void onTick( )const; // 定时器没滴答一次，该函数自动被调用
+    };
+
+    class Widget : private Timer {
+    private:
+        virtual void onTick( )const; // 重新定义，使得定时审查自身相关数据
+    };
+    ```
+- 使用private继承的场景1补充：解决一个设计问题的方法不只有一种，训练自己思考多种方法是值得的。上述的方法可以使用内嵌类并使用复合的方式解决，并且还有两个其他优势：1、防止子类重新定义虚函数；2、可以进一步将Widget的编译依存性降至最低，可以在Widget中使用指针指向WidgetTimer对象，这样Widget可以只带着一个简单的WidgetTimer声明式。
+    ```C++
+    class Widget {
+    private:
+        class WidgetTimer : public Timer {
+            virtual onTick() const;
+            ...
+        };
+        WidgetTimer timer;
+    ```
+- 使用private继承的场景2----EBO：所谓的EBO，空白基类最优化（Empty Base Optimization）。C++裁定凡是独立对象都必须有非零大小，而使用private继承可以保证空白基类最优化。
+    ```C++
+    class Empty {
+    public:
+        static void print(){
+            cout << "hello" << endl;
+        }
+    };
+
+    class Derived1 : private Empty {
+        private:
+        int m;
+    };
+    class Derived2 {
+        private:
+        Empty e;
+        int m;
+    };
+
+    int main() {
+        Empty e;
+        Derived1 d1;
+        Derived2 d2;
+        cout << sizeof e << "-" << sizeof d1 << "-" << sizeof d2  << "-" << sizeof(int)<< endl;
+    }
+    // The output is:1-4-8-4
+    ```
+
+## 条款理解 
+
+- private继承意味是is-implemented-in-terms-of, 通常优先私用复合，但是再两种场景下可能需要使用private继承：
+  - 当derived class需要访问protected成员或者重新定义虚函数
+  - 考虑EBO
+
+## 条款40： 明智而审慎地使用多重继承(USe multiple inheritance judiciously)
+
+## 基本概念：
+
+- 歧义（ambiguity）：程序可能从多个base class继承相同的名称，会导致歧义（此时并不会检查可取用性）。解决办法是明白指出调用哪一个base中的名称。`obj.Base1::someFun()`.
+- "钻石型多重继承"----某个继承体系中出现某个base class和derived class之间有一条以上的通路.在钻石型多重继承中
+    ```C++
+    class File {...};
+    class InputFIle : public File {...};
+    class OutputFIle : public File {...};
+    class IOFile: public InputFIle,
+                public OutputFIle
+                {...};
+    ```
+- 需要考虑的是：是否要将base class中的每个成员变量经由每条路径复制？在C++中两种都支持，但是默认是“将base class中的每个成员变量经由每条路径复制”。如果这不是想要的行为，必须将base class成为一个`virtual base class`.但是virtual继承是有代价的，类的体积更大、访问成员变量的速度更慢、derived class不论多远都必须肩负初始化virtual base的责任。建议如非必要不要使用virtual base，如果必须使用尽可能避免在里面放置数据
+    ```C++
+    class File {...};
+    class InputFIle : virtual public File {...};
+    class OutputFIle : virtual public File {...};
+    class IOFile: public InputFIle,
+                public OutputFIle
+                {...};
+    ```
+- 多重继承的一个合理的使用场景：将“public继承自某接口”和“private继承自某实现”（因为要利用已有的类且需要重新定义须函数）结合在一起：
+    ```C++
+    class IPerson {
+    public:
+        virtual ~IPerson();
+        virtual std::string name() const = 0;
+        virtual std::string birthDate() const = 0;
+    };
+
+    class DatabaseID {...};
+    class PersonInfo {
+    public:
+        explicit PersonInfo(DatabaseID pid);
+        virtual ~PersonInfo();
+        virtual const char* theName() const;
+        virtual const char* theBirthDate() const;
+        virtual const char* valueDelimOpen() const;
+        virtual const char* valueDelimClose() const;
+    };
+
+    class CPerson : public IPerson, private PersonInfo {
+    public:
+        explicit CPerson(DatabaseID pid) : PersonInfo(pid){}
+        virtual std::string name() const {
+            return PersonInfo::theName();
+        }
+        virtual std::string birthDate() const {
+            return PersonInfo::thebirthDate();
+        }
+    private:
+        const char* valueDelimOpen() const {
+            return "";
+        }
+        const char* valueDelimClose() const {
+            return "";
+        }
+    };
+    ```
+
+## 条款理解 
+
+- 在多重继承下，需要考虑歧义；同时针对钻石型继承，需要关注virtual继承的必要性和限制
+- 多重继承有其使用的正当场景----将“public继承自某接口”和“private继承自某实现”结合在一起
+
+
+## 7 模板与泛型编程(Templates and Generic Programming)
+
+## 条款41： 了解隐式接口和编译期多态(Understand implicit interfaces and compile-time polymorphism)
+
+## 基本概念
+
+- 面向对象编程的世界总是以显式接口（explicit interface）和运行期多态（runtime polymorphism）解决问题。所谓的显式接口，可以理解为基于函数的签名式。例如：w的类型被声明为Widget&， 所以w必须支持Widget接口；由于Widget的某些成员函数是virtual，所以w对那些函数的调用表现出运行期多态（runtime polymorphism）
+    ```C++
+    class Widget {
+    public:
+        Widget();
+        virtual ~Widget();
+        virtual std::size_t size() const;
+        virtual void normallize();
+        void swap(Widget& other);
+        ...
+    };
+
+    void doProcessing(Widget& w) {
+        if (w.size() > 10 && w != someNastyWidget) {
+            Widget temp(w);
+            temp.normallize();
+            temp.swap(w);
+        }
+    }
+    ```
+- Templates及泛型编程的世界，隐式接口（implicit interfaces）和编译器多态（compile-time polymorphism）移到前头了。w必须支持哪一种接口，由template中执行于w身上的操作来决定； 在编译器出现“多态”行为，即“以不同的template参数具现化function templates”会导致调用不同的函数。隐式接口基于“有效表达式”
+    ```C++
+    template<typename T>
+    void doProcessing(T& w){
+        if (w.size() > 10 && w != someNastyWidget) {
+        Widget temp(w);
+        temp.normallize();
+        temp.swap(w);
+    }
+    ```
+
+## 条款理解 
+
+- 面向对象和泛型编程都支持接口和多态
+- 对面向对象而言，接口是显式的，以函数签名为中心；多态是同过virtual函数实现的
+- 对泛型编程而言，接口是隐式的，基于“有效表达式”。多态则是通过template具现化和函数重载解析（function overloading resolution）发生于编译期
+
+## 条款42： 了解typename的双重意义（Understand the tho meaning of the typename）
+
+## 基本概念
+
+- 当我们声明template参数时，class关键字和typename关键字意义完全相同
+    ```C++
+    template<class T>class Widget;
+    template<typename T>class Widget;
+    ```
+- 然而class和typename并不总是等价的，typename有它独特的用武之地：
+  - 嵌套从属名称：template中出现的名称如果相依于某个template参数，则该名称成为从属名称；如果从属名称在class中呈嵌套状，我们称它为嵌套从属名称。
+  - 一般性的规则：当要在template中指涉一个嵌套从属类型名称，就必须在紧临它的前一位置使用typename关键字。这背后的原因是编译器默认嵌套从属名称不是一个名称，所以需要特别说明。
+    ```C++
+    template<typename C>
+    void print2nd(const C& container){
+        if (container.size() > 2) {
+            typename C::const_iterator iter(container.begin()); // typename是必须的
+            ++iter;
+            int value = *itr;
+            std::cout << value;
+        }
+    }
+    ```
+  - 一般性的规则的例外：不可以出现在base class list内的嵌套从属类型名称之前，也不可以在member initialization list中作为base class的修饰词。 
+     ```C++
+    template<typename T>
+    class Derived : public Base<T>::Nested { // No typename
+    public:
+        explicit Derived(int x)
+        : Base<T>::Nested(x) { // // No typename
+            typename Base<T>::Nested temp; // Need typename
+            ...
+        }
+    }
+    ```
+  - 一般性的规则的补充：使用`typedef typename `简化编码，事实上在现代C++，可以使用auto :)
+    ```C++
+    template<typename T>
+    void plusOneAndPrint(const T& itr){
+        typename std::iterator_traits<T>::value_type temp(*itr);
+        cout << ++temp << endl;
+    };
+
+    template<typename T>
+    void plusOneAndPrintV1(const T& itr){
+        typedef typename std::iterator_traits<T>::value_type value_type;
+        value_type temp(*itr);
+        cout << ++temp << endl;
+    };
+
+    template<typename T>
+    void plusOneAndPrintV2(const T& itr){
+        auto temp(*itr);
+        cout << ++temp << endl;
+    };
+
+    int main() {
+        vector<int>v{0,1};
+        plusOneAndPrint(v.begin()+1);
+        plusOneAndPrintV1(v.begin()+1);
+        plusOneAndPrintV2(v.begin()+1);
+    }
+    ```
+
+## 条款理解
+
+- 声明template参数时，typename和class是等价的
+- 但是typename有独特的用武之地，主要是涉及到嵌套从属名称时。
+
+## 条款43： 学习处理模板化基类内的名称(Know how to access names in templatized base classes)
+
+## 基本概念
+
+- 全特化：template MsgSender针对类型CompanyZ全特化了。
+    ```C++
+    class CompanyA {
+    public:
+        void sendClearText(const string& msg);
+        void sendEncrypted(const string& msg);
+    };
+
+    class CompanyB {
+    public:
+        void sendClearText(const string& msg);
+        void sendEncrypted(const string& msg);
+    };
+
+    class MsgInfo {...};
+
+    template<typename Company>
+    class MsgSender {
+    public:
+        void sendClear(const MsgInfo& Info){
+            string msg;
+            // convert Info into msg;
+            Company c;
+            c.sendClearText(msg);
+        }
+        void sendSecret(const MsgInfo& Info){
+            ...
+        }
+    }
+
+    class CompanyZ {
+    public:
+        void sendEncrypted(const string& msg); // CompanyZ only support  sendEncrypted
+    };
+
+    template<>
+    class MsgSender<CompanyZ> { //针对CompanyZ的全特化版本
+    public:
+        void sendSecret(const MsgInfo& Info){
+            ...
+        }
+    }
+  ```
+- 默认情况下，模板类的继承子类无法在derived class中直接调用父类的方法，原因就是上述的全特化版本可能存在，它无法提供一个和一般性template相同的接口，因此C++默认拒绝。下述代码将无法通过编译。
+    ```C++
+    template<typename Company>
+    class LoggingMsgSender : public MsgSender<Company> {
+    public:
+        void sendClearMsg(const MsgInfo& Info){
+            // do some logging work
+            sendClear(Info); // Compile Error!
+            // do some logging work
+        }
+        ...
+    }
+    ```
+- 解决办法有三种：
+  - 在base class调用之前加上`this->`
+    ```C++
+    template<typename Company>
+    class LoggingMsgSender : public MsgSender<Company> {
+    public:
+        void sendClearMsg(const MsgInfo& Info){
+            // do some logging work
+            this->sendClear(Info);
+            // do some logging work
+        }
+        ...
+    }
+  - 使用using声明
+      ```C++
+    template<typename Company>
+    class LoggingMsgSender : public MsgSender<Company> {
+    public:
+        using MsgSender<Company>::sendClear;
+        void sendClearMsg(const MsgInfo& Info){
+            // do some logging work
+            sendClear(Info);
+            // do some logging work
+        }
+        ...
+    }
+  - 明白指出使用base class的方法.这往往是最不满意的解法，因为这会关闭virtual函数绑定
+        ```C++
+    template<typename Company>
+    class LoggingMsgSender : public MsgSender<Company> {
+    public:
+        void sendClearMsg(const MsgInfo& Info){
+            // do some logging work
+            MsgSender<Company>::sendClear(Info);
+            // do some logging work
+        }
+        ...
+    }
+
+## 条款理解
+
+- 默认情况下，模板类的继承子类无法在derived class中直接调用父类的方法，原因就是上述的全特化版本可能存在，它无法提供一个和一般性template相同的接口，因此C++默认拒绝
+- 有三种方法可以在derived class中调用父类的方法，在base class调用之前加上`this->`、使用using声明、明白指出使用base class的方法
+
+## 条款44： 将参数无关的代码抽离templates（Factor paramter-independent code out of template）
 
 ## 附录 运算符顺序
 | 运算符                          | 结合性     |
